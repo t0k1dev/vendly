@@ -5,6 +5,7 @@ import {
   getOrCreateConversation,
   saveMessage,
   getConversationHistory,
+  logTransaction,
 } from "../db/supabase.js";
 import { getAgentResponse } from "../agent/sales-agent.js";
 import { getCatalogData } from "../services/catalog.js";
@@ -74,7 +75,7 @@ bot.on("message:text", async (ctx) => {
     // Load conversation history for Claude context
     const history = await getConversationHistory(conversation.id);
 
-    // Get catalog data (from Supabase for now, will use x402 catalog-service later)
+    // Get catalog data (via x402 catalog-service with Supabase fallback)
     const catalogData = await getCatalogData();
 
     // Call Claude sales agent
@@ -82,6 +83,16 @@ bot.on("message:text", async (ctx) => {
 
     // Save assistant response
     await saveMessage(conversation.id, "assistant", reply);
+
+    // Log inference transaction (Claude API call)
+    await logTransaction({
+      businessId,
+      conversationId: conversation.id,
+      service: "inference",
+      endpoint: "/api/inference",
+      amountUsdc: 0.005,
+      stellarTxHash: "x402-auto",
+    });
 
     await ctx.reply(reply);
   } catch (error) {
