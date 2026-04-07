@@ -1,13 +1,20 @@
 import { Bot } from "grammy";
 import { env } from "../config/env.js";
-import { getDemoBusinessId, getOrCreateConversation, saveMessage, getConversationHistory } from "../db/supabase.js";
+import {
+  getDemoBusinessId,
+  getOrCreateConversation,
+  saveMessage,
+  getConversationHistory,
+} from "../db/supabase.js";
+import { getAgentResponse } from "../agent/sales-agent.js";
+import { getCatalogData } from "../services/catalog.js";
 
 export const bot = new Bot(env.TELEGRAM_BOT_TOKEN);
 
 // /start command
 bot.command("start", async (ctx) => {
   await ctx.reply(
-    "👋 ¡Hola! Soy el asistente de ventas de <b>Demo Zapatería</b>.\n\n" +
+    "¡Hola! Soy el asistente de ventas de <b>Demo Zapatería</b>.\n\n" +
       "Pregúntame sobre nuestros productos, precios y disponibilidad.\n\n" +
       "Escribe cualquier mensaje para empezar. Por ejemplo:\n" +
       '• "¿Tienen zapatillas Nike?"\n' +
@@ -29,17 +36,25 @@ bot.command("help", async (ctx) => {
   );
 });
 
-// /productos command — placeholder until catalog service is wired
+// /productos command — shows full catalog
 bot.command("productos", async (ctx) => {
-  await ctx.reply(
-    "📦 <b>Nuestro catálogo:</b>\n\n" +
-      "Tenemos zapatillas Nike, Adidas, Puma, New Balance, Converse, Reebok, y Vans.\n\n" +
-      "Pregúntame por una marca o estilo y te doy detalles con precios.",
-    { parse_mode: "HTML" }
-  );
+  try {
+    const catalog = await getCatalogData();
+    const lines = catalog
+      .split("\n")
+      .filter((l) => l.startsWith("- "))
+      .join("\n");
+    await ctx.reply(`<b>Nuestro catálogo:</b>\n\n${lines}`, {
+      parse_mode: "HTML",
+    });
+  } catch {
+    await ctx.reply(
+      "No pude cargar el catálogo en este momento. Intenta de nuevo."
+    );
+  }
 });
 
-// Main message handler — echo for now, will be replaced with Claude agent
+// Main message handler — Claude sales agent
 bot.on("message:text", async (ctx) => {
   const chatId = ctx.chat.id;
   const userMessage = ctx.message.text;
@@ -47,21 +62,33 @@ bot.on("message:text", async (ctx) => {
 
   try {
     const businessId = await getDemoBusinessId();
-    const conversation = await getOrCreateConversation(businessId, chatId, customerName);
+    const conversation = await getOrCreateConversation(
+      businessId,
+      chatId,
+      customerName
+    );
 
     // Save user message
     await saveMessage(conversation.id, "user", userMessage);
 
-    // TODO: Replace with Claude agent call (Day 2)
-    const reply = `Echo: ${userMessage}\n\n(Agent AI coming soon — this confirms the bot and DB are working)`;
+    // Load conversation history for Claude context
+    const history = await getConversationHistory(conversation.id);
 
-    // Save assistant message
+    // Get catalog data (from Supabase for now, will use x402 catalog-service later)
+    const catalogData = await getCatalogData();
+
+    // Call Claude sales agent
+    const reply = await getAgentResponse(history, userMessage, catalogData);
+
+    // Save assistant response
     await saveMessage(conversation.id, "assistant", reply);
 
     await ctx.reply(reply);
   } catch (error) {
     console.error("Message handler error:", error);
-    await ctx.reply("Lo siento, hubo un error. Intenta de nuevo en un momento.");
+    await ctx.reply(
+      "Lo siento, hubo un error. Intenta de nuevo en un momento."
+    );
   }
 });
 
