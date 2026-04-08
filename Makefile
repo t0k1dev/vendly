@@ -61,3 +61,10 @@ test-x402:
 
 test-health:
 	curl -s http://localhost:8080/health | python3 -m json.tool
+
+# --- Webhook management ---
+webhook-set:
+	cd backend && npm run webhook:set
+
+webhook-delete:
+	cd backend && npm run webhook:delete

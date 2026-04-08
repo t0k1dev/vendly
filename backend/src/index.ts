@@ -16,7 +16,7 @@ app.use("*", logger());
 app.use(
   "*",
   cors({
-    origin: ["http://localhost:3000", "https://vendly.vercel.app"],
+    origin: ["http://localhost:3000", env.FRONTEND_URL],
     allowMethods: ["GET", "POST", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization", "X-PAYMENT"],
   })
