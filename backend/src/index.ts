@@ -39,8 +39,53 @@ app.get("/api/status", (c) =>
     network: `stellar:${env.STELLAR_NETWORK}`,
     publicKey: env.AGENT_STELLAR_PUBLIC,
     catalogService: env.CATALOG_SERVICE_URL,
+    frontendUrl: env.FRONTEND_URL,
+    nodeEnv: env.NODE_ENV,
   })
 );
+
+// Debug endpoint — test each dependency
+app.get("/api/debug", async (c) => {
+  const results: Record<string, unknown> = {};
+
+  // Test Supabase
+  try {
+    const { getDemoBusinessId } = await import("./db/supabase.js");
+    const bizId = await getDemoBusinessId();
+    results.supabase = { ok: true, businessId: bizId };
+  } catch (e) {
+    results.supabase = { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+
+  // Test Stellar balance
+  try {
+    const { getWalletBalance } = await import("./services/wallet.js");
+    const balance = await getWalletBalance();
+    results.stellar = { ok: true, usdc: balance.usdc, xlm: balance.xlm };
+  } catch (e) {
+    results.stellar = { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+
+  // Test catalog service
+  try {
+    const { getCatalogData } = await import("./services/catalog.js");
+    const catalog = await getCatalogData();
+    results.catalog = { ok: true, length: catalog.length };
+  } catch (e) {
+    results.catalog = { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+
+  // Test Claude
+  try {
+    const { getAgentResponse } = await import("./agent/sales-agent.js");
+    const reply = await getAgentResponse([], "test", "No products");
+    results.claude = { ok: true, replyLength: reply.length };
+  } catch (e) {
+    results.claude = { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+
+  return c.json(results);
+});
 
 // --- x402 payment middleware (applies to routes in routeConfig) ---
 app.use("*", paymentMiddleware(routeConfig, resourceServer));
