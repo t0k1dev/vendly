@@ -1,13 +1,13 @@
-import { fetchWithPayment } from "../x402/client.js";
+import { fetchWithPayment, extractTxHash } from "../x402/client.js";
 import { supabase } from "../db/supabase.js";
 import { logTransaction, getDemoBusinessId } from "../db/supabase.js";
 import { env } from "../config/env.js";
 import { classifyPaymentError, PaymentError } from "./wallet.js";
 
-// Cached catalog string — refreshed every 5 minutes
+// Cached catalog string — refreshed every 30 seconds (short for demo visibility)
 let _cachedCatalog: string | null = null;
 let _cacheTimestamp = 0;
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL_MS = 30 * 1000; // 30 seconds
 
 interface Product {
   name: string;
@@ -34,6 +34,9 @@ async function fetchProductsFromCatalogService(query?: string): Promise<Product[
     }
     const data = await res.json() as { products: Product[] };
 
+    // Extract real Stellar TX hash from x402 payment response
+    const txHash = extractTxHash(res);
+
     // Log the x402 transaction
     const businessId = await getDemoBusinessId();
     await logTransaction({
@@ -41,7 +44,7 @@ async function fetchProductsFromCatalogService(query?: string): Promise<Product[
       service: "catalog",
       endpoint: "/api/products",
       amountUsdc: 0.001,
-      stellarTxHash: "x402-auto",
+      stellarTxHash: txHash,
     });
 
     return data.products;
@@ -104,11 +107,11 @@ async function fetchProductsFromSupabase(query?: string): Promise<Product[]> {
  */
 function formatCatalog(products: Product[]): string {
   if (products.length === 0) {
-    return "No hay productos disponibles en este momento.";
+    return "No products available at this time.";
   }
   return products
     .map((p) => {
-      const stock = p.in_stock ? "En stock" : "AGOTADO";
+      const stock = p.in_stock ? "In stock" : "OUT OF STOCK";
       return `- ${p.name} — $${p.price} ${p.currency} (${p.category}) [${stock}]\n  ${p.description}`;
     })
     .join("\n");

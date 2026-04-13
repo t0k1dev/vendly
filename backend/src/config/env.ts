@@ -23,6 +23,7 @@ export const env = {
   STELLAR_NETWORK: optional("STELLAR_NETWORK", "testnet"),
   AGENT_STELLAR_SECRET: required("AGENT_STELLAR_SECRET"),
   AGENT_STELLAR_PUBLIC: required("AGENT_STELLAR_PUBLIC"),
+  PLATFORM_STELLAR_PUBLIC: optional("PLATFORM_STELLAR_PUBLIC", ""),
   STELLAR_RPC_URL: optional("STELLAR_RPC_URL", "https://soroban-testnet.stellar.org"),
   X402_FACILITATOR_URL: optional("X402_FACILITATOR_URL", "https://www.x402.org/facilitator"),
 
@@ -38,4 +39,5 @@ export const env = {
   PORT: Number(optional("PORT", "8080")),
   NODE_ENV: optional("NODE_ENV", "development"),
   FRONTEND_URL: optional("FRONTEND_URL", "http://localhost:3000"),
+  BACKEND_URL: optional("BACKEND_URL", `http://localhost:${optional("PORT", "8080")}`),
 } as const;
