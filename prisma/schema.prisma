@@ -1,0 +1,213 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Auth / Users ────────────────────────────────────────────────────────────
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  name         String?
+  avatarUrl    String?
+  createdAt    DateTime      @default(now())
+  storeMembers StoreMember[]
+}
+
+// ─── Store ────────────────────────────────────────────────────────────────────
+
+model Store {
+  id                   String           @id @default(uuid())
+  name                 String
+  category             String?
+  country              String?
+  onboardingCompleted  Boolean          @default(false)
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  plan                 Plan             @default(FREE)
+  planExpiresAt        DateTime?
+  createdAt            DateTime         @default(now())
+
+  members         StoreMember[]
+  inventories     Inventory[]
+  clients         Client[]
+  orders          Order[]
+  agentConfig     AgentConfig?
+  whatsappSession WhatsAppSession?
+  messages        Message[]
+}
+
+model StoreMember {
+  id        String   @id @default(uuid())
+  userId    String
+  storeId   String
+  role      Role     @default(OWNER)
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, storeId])
+}
+
+enum Role {
+  OWNER
+  STAFF
+  VIEWER
+}
+
+enum Plan {
+  FREE
+  PRO
+  BUSINESS
+}
+
+// ─── Inventory & Products ─────────────────────────────────────────────────────
+
+model Inventory {
+  id        String          @id @default(uuid())
+  storeId   String
+  name      String
+  status    InventoryStatus @default(ACTIVE)
+  createdAt DateTime        @default(now())
+
+  store    Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  products Product[]
+}
+
+enum InventoryStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+model Product {
+  id                String   @id @default(uuid())
+  inventoryId       String
+  name              String
+  sku               String?
+  price             Decimal  @db.Decimal(10, 2)
+  stock             Int      @default(0)
+  category          String?
+  imageUrl          String?
+  lowStockThreshold Int      @default(5)
+  createdAt         DateTime @default(now())
+
+  inventory  Inventory   @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+}
+
+// ─── Clients ──────────────────────────────────────────────────────────────────
+
+model Client {
+  id        String   @id @default(uuid())
+  storeId   String
+  name      String?
+  phone     String
+  location  String?
+  notes     String?
+  tags      String[]
+  createdAt DateTime @default(now())
+
+  store  Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@unique([storeId, phone])
+}
+
+// ─── Orders ───────────────────────────────────────────────────────────────────
+
+model Order {
+  id        String      @id @default(uuid())
+  storeId   String
+  clientId  String
+  status    OrderStatus @default(PENDIENTE)
+  total     Decimal     @db.Decimal(10, 2)
+  notes     String?
+  source    OrderSource @default(WHATSAPP)
+  createdAt DateTime    @default(now())
+
+  store  Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  client Client      @relation(fields: [clientId], references: [id])
+  items  OrderItem[]
+}
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  orderId   String
+  productId String
+  quantity  Int
+  unitPrice Decimal @db.Decimal(10, 2)
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+}
+
+enum OrderStatus {
+  PENDIENTE
+  CONFIRMADO
+  ENVIADO
+  ENTREGADO
+  CANCELADO
+}
+
+enum OrderSource {
+  WHATSAPP
+  MANUAL
+}
+
+// ─── Agent Config ─────────────────────────────────────────────────────────────
+
+model AgentConfig {
+  id            String @id @default(uuid())
+  storeId       String @unique
+  salutation    String @default("¡Hola! Bienvenido, ¿en qué te puedo ayudar?")
+  farewell      String @default("¡Hasta luego! Fue un placer atenderte.")
+  tone          Tone   @default(INFORMAL)
+  businessHours Json?
+  outOfHoursMsg String @default("Gracias por escribirnos. En este momento estamos fuera de horario, te atenderemos pronto.")
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+}
+
+enum Tone {
+  FORMAL
+  INFORMAL
+}
+
+// ─── WhatsApp ─────────────────────────────────────────────────────────────────
+
+model WhatsAppSession {
+  id            String   @id @default(uuid())
+  storeId       String   @unique
+  phoneNumberId String
+  connected     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+}
+
+model Message {
+  id          String           @id @default(uuid())
+  storeId     String
+  clientPhone String
+  direction   MessageDirection
+  type        MessageType      @default(TEXT)
+  content     String
+  createdAt   DateTime         @default(now())
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+}
+
+enum MessageDirection {
+  IN
+  OUT
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  AUDIO
+}
