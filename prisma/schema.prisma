@@ -92,7 +92,6 @@ model Product {
   id                String   @id @default(uuid())
   inventoryId       String
   name              String
-  sku               String?
   price             Decimal  @db.Decimal(10, 2)
   currency          Currency @default(USD)
   stock             Int      @default(0)
