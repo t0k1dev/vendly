@@ -178,6 +178,55 @@ async function executeTool(name: string, input: Record<string, unknown>, storeId
   }
 }
 
+// ─── Business hours check ─────────────────────────────────────────────────────
+
+type DaySchedule = { open: string; close: string; enabled: boolean }
+type BusinessHours = Record<string, DaySchedule>
+
+const COUNTRY_TIMEZONE: Record<string, string> = {
+  BO: "America/La_Paz",
+  AR: "America/Argentina/Buenos_Aires",
+  CL: "America/Santiago",
+  PE: "America/Lima",
+  CO: "America/Bogota",
+  MX: "America/Mexico_City",
+  VE: "America/Caracas",
+  EC: "America/Guayaquil",
+  PY: "America/Asuncion",
+  UY: "America/Montevideo",
+}
+
+const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]
+
+function isWithinBusinessHours(businessHours: BusinessHours, country: string | null): boolean {
+  const tz = (country && COUNTRY_TIMEZONE[country]) ?? "UTC"
+  const now = new Date()
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    weekday: "short",
+  })
+  const parts = formatter.formatToParts(now)
+  const weekday = parts.find((p) => p.type === "weekday")?.value?.toLowerCase() // "mon", "tue", etc.
+  const hour = parts.find((p) => p.type === "hour")?.value ?? "00"
+  const minute = parts.find((p) => p.type === "minute")?.value ?? "00"
+  const currentTime = `${hour}:${minute}`
+
+  // Map Intl short weekday to our keys
+  const dayMap: Record<string, string> = {
+    mon: "mon", tue: "tue", wed: "wed", thu: "thu", fri: "fri", sat: "sat", sun: "sun",
+  }
+  const dayKey = weekday ? dayMap[weekday] : undefined
+  if (!dayKey) return true // can't determine, allow
+
+  const schedule = businessHours[dayKey]
+  if (!schedule || !schedule.enabled) return false
+
+  return currentTime >= schedule.open && currentTime <= schedule.close
+}
+
 // ─── Main agent runner ────────────────────────────────────────────────────────
 
 export async function runAgent({ storeId, clientPhone, message }: RunAgentParams): Promise<string> {
@@ -186,9 +235,22 @@ export async function runAgent({ storeId, clientPhone, message }: RunAgentParams
     const agentConfig = await prisma.agentConfig.findUnique({ where: { storeId } })
     const store = await prisma.store.findUnique({ where: { id: storeId } })
 
+    // Out-of-hours check
+    if (agentConfig?.businessHours) {
+      const hours = agentConfig.businessHours as BusinessHours
+      if (!isWithinBusinessHours(hours, store?.country ?? null)) {
+        return agentConfig.outOfHoursMsg
+      }
+    }
+
+    const toneInstruction = agentConfig?.tone === "FORMAL"
+      ? 'Usa "usted" al dirigirte al cliente. Sé formal y profesional en todo momento.'
+      : 'Usa "tú" al dirigirte al cliente. Sé amigable y cercano.'
+
     const systemPrompt = `Eres el asistente virtual de WhatsApp de la tienda "${store?.name ?? "esta tienda"}".
 Tu saludo de bienvenida es: "${agentConfig?.salutation ?? "¡Hola! ¿En qué te puedo ayudar?"}"
-Tu tono es ${agentConfig?.tone === "FORMAL" ? "formal y profesional" : "amigable e informal"}.
+Tu mensaje de despedida es: "${agentConfig?.farewell ?? "¡Hasta luego! Fue un placer atenderte."}"
+${toneInstruction}
 Responde SIEMPRE en español. Sé conciso y útil.
 Puedes buscar productos, consultar stock, crear pedidos, registrar clientes y consultar pedidos usando las herramientas disponibles.
 Si un producto no tiene stock, informa al cliente amablemente y no crees el pedido.`
