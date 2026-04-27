@@ -22,6 +22,9 @@ export default function DashboardPage() {
         <Button onClick={() => router.push("/dashboard/products")}>
           Mis productos
         </Button>
+        <Button variant="outline" onClick={() => router.push("/dashboard/settings/whatsapp")}>
+          WhatsApp
+        </Button>
         <Button variant="outline" onClick={handleLogout}>
           Cerrar sesión
         </Button>
