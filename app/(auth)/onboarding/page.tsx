@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { prisma } from "@/lib/prisma"
-import type { Prisma } from "@prisma/client"
+import type { PrismaClient } from "@prisma/client"
 import OnboardingWizard from "@/components/onboarding/OnboardingWizard"
 
 export default async function OnboardingPage() {
@@ -18,7 +18,7 @@ export default async function OnboardingPage() {
   if (!member) {
     const name = user.user_metadata?.full_name ?? user.email?.split("@")[0] ?? "Usuario"
 
-    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    await prisma.$transaction(async (tx: Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>) => {
       // Upsert user in case it was partially created
       await tx.user.upsert({
         where: { id: user.id },
