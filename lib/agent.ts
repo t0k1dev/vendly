@@ -7,6 +7,14 @@ type RunAgentParams = {
   storeId: string
   clientPhone: string
   message: string
+  playground?: boolean
+  // Playground: pass conversation history from client state (not loaded from DB)
+  history?: Anthropic.MessageParam[]
+}
+
+export type AgentTurn = {
+  reply: string
+  toolsUsed: string[]
 }
 
 const FALLBACK = "Disculpa, tuve un problema al procesar tu mensaje. ¿Puedes intentarlo de nuevo?"
@@ -79,7 +87,12 @@ const tools: Anthropic.Tool[] = [
 
 // ─── Tool execution ───────────────────────────────────────────────────────────
 
-async function executeTool(name: string, input: Record<string, unknown>, storeId: string): Promise<string> {
+async function executeTool(
+  name: string,
+  input: Record<string, unknown>,
+  storeId: string,
+  playground: boolean
+): Promise<string> {
   try {
     if (name === "buscar_producto") {
       const nombre = input.nombre as string
@@ -102,16 +115,31 @@ async function executeTool(name: string, input: Record<string, unknown>, storeId
     }
 
     if (name === "crear_pedido") {
+      if (playground) {
+        // Simulate without writing to DB
+        const items = input.items as Array<{ productoId: string; cantidad: number }>
+        let total = 0
+        const lines: string[] = []
+        for (const item of items) {
+          const product = await prisma.product.findUnique({ where: { id: item.productoId } })
+          if (!product) return `Producto con ID ${item.productoId} no encontrado.`
+          if (product.stock < item.cantidad) {
+            return `Stock insuficiente para "${product.name}". Solo hay ${product.stock} unidades disponibles.`
+          }
+          total += Number(product.price) * item.cantidad
+          lines.push(`${product.name} x${item.cantidad}`)
+        }
+        return `[MODO PRUEBA] Pedido simulado: ${lines.join(", ")}. Total: ${total.toFixed(2)}. (No se creó un pedido real)`
+      }
+
       const items = input.items as Array<{ productoId: string; cantidad: number }>
       const clientePhone = input.clientePhone as string
 
-      // Verify client belongs to store
       const client = await prisma.client.findUnique({
         where: { storeId_phone: { storeId, phone: clientePhone } },
       })
       if (!client) return "Cliente no encontrado."
 
-      // Check stock and compute total
       let total = 0
       for (const item of items) {
         const product = await prisma.product.findUnique({ where: { id: item.productoId } })
@@ -122,7 +150,6 @@ async function executeTool(name: string, input: Record<string, unknown>, storeId
         total += Number(product.price) * item.cantidad
       }
 
-      // Create order
       const order = await prisma.order.create({
         data: {
           storeId,
@@ -139,7 +166,6 @@ async function executeTool(name: string, input: Record<string, unknown>, storeId
         },
       })
 
-      // Decrement stock
       for (const item of items) {
         await prisma.product.update({
           where: { id: item.productoId },
@@ -151,6 +177,9 @@ async function executeTool(name: string, input: Record<string, unknown>, storeId
     }
 
     if (name === "registrar_cliente") {
+      if (playground) {
+        return `[MODO PRUEBA] Cliente "${input.nombre}" registrado simulado. (No se guardó en la base de datos)`
+      }
       const client = await prisma.client.upsert({
         where: { storeId_phone: { storeId, phone: input.telefono as string } },
         create: { storeId, phone: input.telefono as string, name: input.nombre as string },
@@ -196,8 +225,6 @@ const COUNTRY_TIMEZONE: Record<string, string> = {
   UY: "America/Montevideo",
 }
 
-const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]
-
 function isWithinBusinessHours(businessHours: BusinessHours, country: string | null): boolean {
   const tz = (country && COUNTRY_TIMEZONE[country]) ?? "UTC"
   const now = new Date()
@@ -209,17 +236,16 @@ function isWithinBusinessHours(businessHours: BusinessHours, country: string | n
     weekday: "short",
   })
   const parts = formatter.formatToParts(now)
-  const weekday = parts.find((p) => p.type === "weekday")?.value?.toLowerCase() // "mon", "tue", etc.
+  const weekday = parts.find((p) => p.type === "weekday")?.value?.toLowerCase()
   const hour = parts.find((p) => p.type === "hour")?.value ?? "00"
   const minute = parts.find((p) => p.type === "minute")?.value ?? "00"
   const currentTime = `${hour}:${minute}`
 
-  // Map Intl short weekday to our keys
   const dayMap: Record<string, string> = {
     mon: "mon", tue: "tue", wed: "wed", thu: "thu", fri: "fri", sat: "sat", sun: "sun",
   }
   const dayKey = weekday ? dayMap[weekday] : undefined
-  if (!dayKey) return true // can't determine, allow
+  if (!dayKey) return true
 
   const schedule = businessHours[dayKey]
   if (!schedule || !schedule.enabled) return false
@@ -229,17 +255,22 @@ function isWithinBusinessHours(businessHours: BusinessHours, country: string | n
 
 // ─── Main agent runner ────────────────────────────────────────────────────────
 
-export async function runAgent({ storeId, clientPhone, message }: RunAgentParams): Promise<string> {
+export async function runAgent({
+  storeId,
+  clientPhone,
+  message,
+  playground = false,
+  history: externalHistory,
+}: RunAgentParams): Promise<AgentTurn> {
   try {
-    // Load agent config for system prompt
     const agentConfig = await prisma.agentConfig.findUnique({ where: { storeId } })
     const store = await prisma.store.findUnique({ where: { id: storeId } })
 
-    // Out-of-hours check
-    if (agentConfig?.businessHours) {
+    // Out-of-hours check (skip in playground)
+    if (!playground && agentConfig?.businessHours) {
       const hours = agentConfig.businessHours as BusinessHours
       if (!isWithinBusinessHours(hours, store?.country ?? null)) {
-        return agentConfig.outOfHoursMsg
+        return { reply: agentConfig.outOfHoursMsg, toolsUsed: [] }
       }
     }
 
@@ -247,31 +278,41 @@ export async function runAgent({ storeId, clientPhone, message }: RunAgentParams
       ? 'Usa "usted" al dirigirte al cliente. Sé formal y profesional en todo momento.'
       : 'Usa "tú" al dirigirte al cliente. Sé amigable y cercano.'
 
+    const playgroundNote = playground
+      ? "\nEstás en MODO PRUEBA. Las operaciones de escritura (pedidos, clientes) son simuladas y no se guardan en la base de datos."
+      : ""
+
     const systemPrompt = `Eres el asistente virtual de WhatsApp de la tienda "${store?.name ?? "esta tienda"}".
 Tu saludo de bienvenida es: "${agentConfig?.salutation ?? "¡Hola! ¿En qué te puedo ayudar?"}"
 Tu mensaje de despedida es: "${agentConfig?.farewell ?? "¡Hasta luego! Fue un placer atenderte."}"
 ${toneInstruction}
 Responde SIEMPRE en español. Sé conciso y útil.
 Puedes buscar productos, consultar stock, crear pedidos, registrar clientes y consultar pedidos usando las herramientas disponibles.
-Si un producto no tiene stock, informa al cliente amablemente y no crees el pedido.`
+Si un producto no tiene stock, informa al cliente amablemente y no crees el pedido.${playgroundNote}`
 
-    // Load last 10 messages as history
-    const history = await prisma.message.findMany({
-      where: { storeId, clientPhone },
-      orderBy: { createdAt: "desc" },
-      take: 10,
-    })
-    history.reverse()
-
-    const historyMessages: Anthropic.MessageParam[] = history.map((m) => ({
-      role: m.direction === "IN" ? "user" : "assistant",
-      content: m.content,
-    }))
+    // In playground mode use externally supplied history; otherwise load from DB
+    let historyMessages: Anthropic.MessageParam[]
+    if (playground && externalHistory) {
+      historyMessages = externalHistory
+    } else {
+      const dbHistory = await prisma.message.findMany({
+        where: { storeId, clientPhone },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+      })
+      dbHistory.reverse()
+      historyMessages = dbHistory.map((m) => ({
+        role: m.direction === "IN" ? "user" : "assistant",
+        content: m.content,
+      }))
+    }
 
     const messages: Anthropic.MessageParam[] = [
       ...historyMessages,
       { role: "user", content: message },
     ]
+
+    const toolsUsed: string[] = []
 
     // Agentic loop
     let response = await anthropic.messages.create({
@@ -288,7 +329,8 @@ Si un producto no tiene stock, informa al cliente amablemente y no crees el pedi
 
       for (const block of response.content) {
         if (block.type === "tool_use") {
-          const result = await executeTool(block.name, block.input as Record<string, unknown>, storeId)
+          toolsUsed.push(block.name)
+          const result = await executeTool(block.name, block.input as Record<string, unknown>, storeId, playground)
           toolResults.push({ type: "tool_result", tool_use_id: block.id, content: result })
         }
       }
@@ -304,11 +346,11 @@ Si un producto no tiene stock, informa al cliente amablemente y no crees el pedi
       })
     }
 
-    // Extract text reply
     const textBlock = response.content.find((b) => b.type === "text")
-    return textBlock && textBlock.type === "text" ? textBlock.text : FALLBACK
+    const reply = textBlock && textBlock.type === "text" ? textBlock.text : FALLBACK
+    return { reply, toolsUsed }
   } catch (err) {
     console.error("[agent] error:", err)
-    return FALLBACK
+    return { reply: FALLBACK, toolsUsed: [] }
   }
 }

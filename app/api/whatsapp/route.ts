@@ -102,7 +102,7 @@ async function processWebhook(payload: WhatsAppPayload) {
   })
 
   // 7. Run agent
-  const reply = await runAgent({ storeId, clientPhone: senderPhone, message: content })
+  const { reply } = await runAgent({ storeId, clientPhone: senderPhone, message: content })
 
   // 8. Save outbound message
   await prisma.message.create({

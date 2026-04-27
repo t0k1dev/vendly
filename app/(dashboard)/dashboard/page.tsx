@@ -67,6 +67,7 @@ export default function DashboardPage() {
           <Button size="sm" variant="outline" onClick={() => router.push("/dashboard/clients")}>Clientes</Button>
           <Button size="sm" variant="outline" onClick={() => router.push("/dashboard/settings/whatsapp")}>WhatsApp</Button>
           <Button size="sm" variant="outline" onClick={() => router.push("/dashboard/settings/agent")}>Agente</Button>
+          <Button size="sm" variant="outline" onClick={() => router.push("/dashboard/agent/playground")}>Playground</Button>
           <Button size="sm" variant="outline" onClick={handleLogout}>Salir</Button>
         </div>
       </div>

@@ -9,9 +9,14 @@ export const runtime = "nodejs"
 export const maxDuration = 60
 
 const schema = z.object({
-  storeId: z.string(),
+  // storeId is optional — if omitted (playground), resolved from session
+  storeId: z.string().optional(),
   clientPhone: z.string(),
   message: z.string().min(1),
+  playground: z.boolean().optional(),
+  history: z
+    .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string() }))
+    .optional(),
 })
 
 export async function POST(request: Request) {
@@ -23,12 +28,20 @@ export async function POST(request: Request) {
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
-  const { storeId, clientPhone, message } = parsed.data
+  const { clientPhone, message, playground, history } = parsed.data
 
-  // Verify caller owns the store
-  const member = await prisma.storeMember.findFirst({ where: { userId: user.id, storeId } })
-  if (!member) return NextResponse.json({ error: "No autorizado" }, { status: 403 })
+  // Resolve storeId — from body or from session
+  let storeId = parsed.data.storeId
+  if (!storeId) {
+    const member = await prisma.storeMember.findFirst({ where: { userId: user.id } })
+    if (!member) return NextResponse.json({ error: "Tienda no encontrada" }, { status: 404 })
+    storeId = member.storeId
+  } else {
+    // Verify caller owns the provided store
+    const member = await prisma.storeMember.findFirst({ where: { userId: user.id, storeId } })
+    if (!member) return NextResponse.json({ error: "No autorizado" }, { status: 403 })
+  }
 
-  const reply = await runAgent({ storeId, clientPhone, message })
-  return NextResponse.json({ reply })
+  const turn = await runAgent({ storeId, clientPhone, message, playground, history })
+  return NextResponse.json(turn)
 }

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -96,6 +97,7 @@ function LivePreview({ config }: { config: AgentConfig }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AgentSettingsPage() {
+  const router = useRouter()
   const [config, setConfig] = useState<AgentConfig>(DEFAULT_CONFIG)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -154,7 +156,12 @@ export default function AgentSettingsPage() {
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
-      <h1 className="text-2xl font-semibold mb-6">Configuración del agente</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-semibold">Configuración del agente</h1>
+        <Button variant="outline" onClick={() => router.push("/dashboard/agent/playground")}>
+          Probar agente
+        </Button>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* ── Left column: form ── */}
