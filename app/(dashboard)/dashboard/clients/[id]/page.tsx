@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 
 type Order = {
   id: string
@@ -84,6 +86,7 @@ export default function ClientProfilePage() {
     const updated = await res.json()
     setClient((prev) => prev ? { ...prev, ...updated } : prev)
     setEditing(false)
+    toast.success("Cliente actualizado")
   }
 
   const addTag = () => {
@@ -94,7 +97,13 @@ export default function ClientProfilePage() {
 
   const removeTag = (t: string) => setTags((prev) => prev.filter((x) => x !== t))
 
-  if (loading) return <div className="p-8 text-sm text-gray-500">Cargando...</div>
+  if (loading) return (
+    <div className="max-w-2xl mx-auto px-4 py-8 space-y-4">
+      <Skeleton className="h-4 w-16" />
+      <Skeleton className="h-8 w-48" />
+      <Skeleton className="h-48 w-full rounded-xl" />
+    </div>
+  )
   if (!client) return <div className="p-8 text-sm text-red-500">Cliente no encontrado.</div>
 
   const totalSpent = client.orders

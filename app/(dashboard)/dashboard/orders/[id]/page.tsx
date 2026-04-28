@@ -1,11 +1,13 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams } from "next/navigation"
 import Link from "next/link"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Dialog,
   DialogContent,
@@ -52,7 +54,6 @@ const CURRENCY_SYMBOL: Record<string, string> = { USD: "$", BOB: "Bs." }
 
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const router = useRouter()
   const [order, setOrder] = useState<OrderDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -75,11 +76,23 @@ export default function OrderDetailPage() {
       body: JSON.stringify({ status }),
     })
     setSaving(false)
-    if (res.ok) setOrder((prev) => prev ? { ...prev, status } : prev)
+    if (res.ok) {
+      setOrder((prev) => prev ? { ...prev, status } : prev)
+      toast.success(status === "CANCELADO" ? "Pedido cancelado" : `Estado actualizado a ${STATUS_LABELS[status]}`)
+    } else {
+      toast.error("Error al actualizar el estado")
+    }
     setShowCancel(false)
   }
 
-  if (loading) return <div className="p-8 text-sm text-gray-500">Cargando...</div>
+  if (loading) return (
+    <div className="max-w-2xl mx-auto px-4 py-8 space-y-4">
+      <Skeleton className="h-4 w-16" />
+      <Skeleton className="h-8 w-48" />
+      <Skeleton className="h-32 w-full rounded-xl" />
+      <Skeleton className="h-40 w-full rounded-xl" />
+    </div>
+  )
   if (!order) return <div className="p-8 text-sm text-red-500">Pedido no encontrado.</div>
 
   const isCancelled = order.status === "CANCELADO"
