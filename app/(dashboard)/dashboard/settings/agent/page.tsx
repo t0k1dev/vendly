@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -101,7 +102,6 @@ export default function AgentSettingsPage() {
   const [config, setConfig] = useState<AgentConfig>(DEFAULT_CONFIG)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
 
   useEffect(() => {
     fetch("/api/agent-config")
@@ -121,19 +121,17 @@ export default function AgentSettingsPage() {
 
   function setField<K extends keyof AgentConfig>(key: K, value: AgentConfig[K]) {
     setConfig((prev) => ({ ...prev, [key]: value }))
-    setSaved(false)
   }
 
   function setDaySchedule(dayKey: string, field: keyof DaySchedule, value: string | boolean) {
     const hours = config.businessHours ?? DEFAULT_HOURS
     setConfig((prev) => ({
-      ...prev,
-      businessHours: {
-        ...hours,
-        [dayKey]: { ...hours[dayKey], [field]: value },
-      },
-    }))
-    setSaved(false)
+        ...prev,
+        businessHours: {
+          ...hours,
+          [dayKey]: { ...hours[dayKey], [field]: value },
+        },
+      }))
   }
 
   async function handleSave() {
@@ -144,7 +142,8 @@ export default function AgentSettingsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(config),
       })
-      if (res.ok) setSaved(true)
+      if (res.ok) toast.success("Configuración guardada")
+      else toast.error("Error al guardar")
     } finally {
       setSaving(false)
     }
@@ -260,7 +259,7 @@ export default function AgentSettingsPage() {
           </Card>
 
           <Button onClick={handleSave} disabled={saving} className="self-start">
-            {saving ? "Guardando…" : saved ? "Guardado ✓" : "Guardar cambios"}
+            {saving ? "Guardando…" : "Guardar cambios"}
           </Button>
         </div>
 

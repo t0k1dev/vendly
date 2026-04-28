@@ -2,10 +2,21 @@
 
 import { useEffect, useState, useCallback } from "react"
 import Link from "next/link"
+import { Users } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
+import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import {
   Dialog,
   DialogContent,
@@ -72,57 +83,68 @@ export default function ClientsPage() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-gray-500">Cargando...</p>
+        <div className="space-y-2">
+          {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}
+        </div>
       ) : clients.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
-          <p className="text-lg font-medium">Sin clientes</p>
-          <p className="text-sm mt-1">Los clientes se agregan automáticamente desde WhatsApp</p>
+        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-3">
+          <Users className="size-10 opacity-30" />
+          <p className="font-medium">Sin clientes</p>
+          <p className="text-sm">Los clientes se agregan automáticamente desde WhatsApp</p>
+          <button
+            onClick={() => setShowNew(true)}
+            className="mt-2 text-sm text-primary underline underline-offset-2"
+          >
+            Agregar cliente manualmente
+          </button>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-600">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium">Cliente</th>
-                <th className="text-left px-4 py-3 font-medium">Teléfono</th>
-                <th className="text-left px-4 py-3 font-medium">Tags</th>
-                <th className="text-left px-4 py-3 font-medium">Pedidos</th>
-                <th className="text-left px-4 py-3 font-medium">Desde</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y">
+        <div className="rounded-lg border overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Teléfono</TableHead>
+                <TableHead>Tags</TableHead>
+                <TableHead>Pedidos</TableHead>
+                <TableHead>Desde</TableHead>
+                <TableHead />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {clients.map((c) => (
-                <tr key={c.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium">{c.name ?? <span className="text-gray-400 italic">Sin nombre</span>}</td>
-                  <td className="px-4 py-3 text-gray-600">{c.phone}</td>
-                  <td className="px-4 py-3">
+                <TableRow key={c.id}>
+                  <TableCell className="font-medium">
+                    {c.name ?? <span className="text-muted-foreground italic">Sin nombre</span>}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{c.phone}</TableCell>
+                  <TableCell>
                     <div className="flex flex-wrap gap-1">
                       {c.tags.map((t) => (
                         <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
                       ))}
                     </div>
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">{c._count.orders}</td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{c._count.orders}</TableCell>
+                  <TableCell className="text-muted-foreground text-xs">
                     {new Date(c.createdAt).toLocaleDateString("es-BO")}
-                  </td>
-                  <td className="px-4 py-3">
+                  </TableCell>
+                  <TableCell>
                     <Link href={`/dashboard/clients/${c.id}`} className="text-xs text-blue-600 hover:underline">
                       Ver
                     </Link>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
 
       {showNew && (
         <NewClientModal
           onClose={() => setShowNew(false)}
-          onCreated={() => { setShowNew(false); fetchClients() }}
+          onCreated={() => { setShowNew(false); fetchClients(); toast.success("Cliente creado") }}
         />
       )}
     </div>

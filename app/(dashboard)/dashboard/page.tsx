@@ -1,10 +1,8 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { useRouter } from "next/navigation"
-import { createSupabaseClient } from "@/lib/supabase/client"
 import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 
 const STATUS_LABELS: Record<string, string> = {
   PENDIENTE: "Pendiente",
@@ -33,7 +31,6 @@ type Summary = {
 }
 
 export default function DashboardPage() {
-  const router = useRouter()
   const [summary, setSummary] = useState<Summary | null>(null)
   const [period, setPeriod] = useState<"today" | "week" | "month">("month")
   const [loading, setLoading] = useState(true)
@@ -47,13 +44,6 @@ export default function DashboardPage() {
 
   useEffect(() => { fetchSummary(period) }, [period, fetchSummary])
 
-  const handleLogout = async () => {
-    const supabase = createSupabaseClient()
-    await supabase.auth.signOut()
-    router.push("/login")
-    router.refresh()
-  }
-
   const PERIOD_LABELS = { today: "Hoy", week: "Esta semana", month: "Este mes" }
 
   return (
@@ -61,15 +51,6 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <h1 className="text-2xl font-bold">Dashboard</h1>
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" onClick={() => router.push("/dashboard/products")}>Productos</Button>
-          <Button size="sm" variant="outline" onClick={() => router.push("/dashboard/orders")}>Pedidos</Button>
-          <Button size="sm" variant="outline" onClick={() => router.push("/dashboard/clients")}>Clientes</Button>
-          <Button size="sm" variant="outline" onClick={() => router.push("/dashboard/settings/whatsapp")}>WhatsApp</Button>
-          <Button size="sm" variant="outline" onClick={() => router.push("/dashboard/settings/agent")}>Agente</Button>
-          <Button size="sm" variant="outline" onClick={() => router.push("/dashboard/agent/playground")}>Playground</Button>
-          <Button size="sm" variant="outline" onClick={handleLogout}>Salir</Button>
-        </div>
       </div>
 
       {/* Period selector */}
@@ -88,10 +69,16 @@ export default function DashboardPage() {
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <Card key={i}><CardContent className="p-5 h-24 animate-pulse bg-gray-50" /></Card>
-          ))}
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <Card key={i}><CardContent className="p-5"><Skeleton className="h-8 w-24 mb-2" /><Skeleton className="h-4 w-16" /></CardContent></Card>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card><CardContent className="p-5 space-y-3">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-5 w-full" />)}</CardContent></Card>
+            <Card><CardContent className="p-5 space-y-3">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-5 w-full" />)}</CardContent></Card>
+          </div>
         </div>
       ) : summary ? (
         <div className="space-y-6">

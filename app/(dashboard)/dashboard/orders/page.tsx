@@ -2,10 +2,21 @@
 
 import { useEffect, useState, useCallback } from "react"
 import Link from "next/link"
+import { ShoppingCart } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import {
   Dialog,
   DialogContent,
@@ -124,59 +135,68 @@ export default function OrdersPage() {
 
       {/* Orders table */}
       {loading ? (
-        <p className="text-sm text-gray-500">Cargando...</p>
+        <div className="space-y-2">
+          {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}
+        </div>
       ) : orders.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
-          <p className="text-lg font-medium">Sin pedidos</p>
-          <p className="text-sm mt-1">Los pedidos de WhatsApp y manuales aparecerán aquí</p>
+        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-3">
+          <ShoppingCart className="size-10 opacity-30" />
+          <p className="font-medium">Sin pedidos</p>
+          <p className="text-sm">Los pedidos de WhatsApp y manuales aparecerán aquí</p>
+          <button
+            onClick={() => setShowNewOrder(true)}
+            className="mt-2 text-sm text-primary underline underline-offset-2"
+          >
+            Crear primer pedido
+          </button>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-600">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium">Cliente</th>
-                <th className="text-left px-4 py-3 font-medium">Productos</th>
-                <th className="text-left px-4 py-3 font-medium">Total</th>
-                <th className="text-left px-4 py-3 font-medium">Estado</th>
-                <th className="text-left px-4 py-3 font-medium">Origen</th>
-                <th className="text-left px-4 py-3 font-medium">Fecha</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y">
+        <div className="rounded-lg border overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Productos</TableHead>
+                <TableHead>Total</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>Origen</TableHead>
+                <TableHead>Fecha</TableHead>
+                <TableHead />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {orders.map((o) => (
-                <tr key={o.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3">
+                <TableRow key={o.id}>
+                  <TableCell>
                     <p className="font-medium">{o.client.name ?? o.client.phone}</p>
-                    {o.client.name && <p className="text-xs text-gray-400">{o.client.phone}</p>}
-                  </td>
-                  <td className="px-4 py-3 text-gray-600 max-w-xs truncate">
+                    {o.client.name && <p className="text-xs text-muted-foreground">{o.client.phone}</p>}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground max-w-xs truncate">
                     {o.items.map((i) => `${i.product.name} x${i.quantity}`).join(", ")}
-                  </td>
-                  <td className="px-4 py-3 font-medium">${Number(o.total).toFixed(2)}</td>
-                  <td className="px-4 py-3">
+                  </TableCell>
+                  <TableCell className="font-medium">${Number(o.total).toFixed(2)}</TableCell>
+                  <TableCell>
                     <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[o.status]}`}>
                       {STATUS_LABELS[o.status]}
                     </span>
-                  </td>
-                  <td className="px-4 py-3">
+                  </TableCell>
+                  <TableCell>
                     <Badge variant={o.source === "WHATSAPP" ? "default" : "outline"} className="text-xs">
                       {o.source === "WHATSAPP" ? "WhatsApp" : "Manual"}
                     </Badge>
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-xs">
                     {new Date(o.createdAt).toLocaleDateString("es-BO")}
-                  </td>
-                  <td className="px-4 py-3">
+                  </TableCell>
+                  <TableCell>
                     <Link href={`/dashboard/orders/${o.id}`} className="text-xs text-blue-600 hover:underline">
                       Ver
                     </Link>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
 
@@ -184,7 +204,7 @@ export default function OrdersPage() {
       {showNewOrder && (
         <NewOrderModal
           onClose={() => setShowNewOrder(false)}
-          onCreated={() => { setShowNewOrder(false); fetchOrders() }}
+          onCreated={() => { setShowNewOrder(false); fetchOrders(); toast.success("Pedido creado") }}
         />
       )}
     </div>

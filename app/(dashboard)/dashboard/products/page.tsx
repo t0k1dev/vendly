@@ -2,14 +2,17 @@
 
 import { useEffect, useState } from "react"
 import Image from "next/image"
+import { Package } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Dialog,
   DialogContent,
@@ -150,6 +153,7 @@ export default function ProductsPage() {
     setSaving(false)
     if (!res.ok) { setApiError("Error al guardar el producto"); return }
     setShowForm(false); fetchProducts()
+    toast.success(editing ? "Producto actualizado" : "Producto creado")
   }
 
   const handleDelete = async () => {
@@ -157,6 +161,7 @@ export default function ProductsPage() {
     setSaving(true)
     await fetch(`/api/products/${showDelete.id}`, { method: "DELETE" })
     setSaving(false); setShowDelete(null); fetchProducts()
+    toast.success("Producto eliminado")
   }
 
   return (
@@ -167,12 +172,25 @@ export default function ProductsPage() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-gray-500">Cargando...</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}><CardContent className="p-4 flex gap-3">
+              <Skeleton className="h-16 w-16 rounded-md shrink-0" />
+              <div className="flex-1 space-y-2"><Skeleton className="h-4 w-3/4" /><Skeleton className="h-3 w-1/2" /><Skeleton className="h-4 w-1/4" /></div>
+            </CardContent></Card>
+          ))}
+        </div>
       ) : products.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
-          <p className="text-lg font-medium">Sin productos</p>
-          <p className="text-sm mt-1">Agrega tu primer producto</p>
-          <Button className="mt-4" onClick={openCreate}>+ Nuevo producto</Button>
+        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-3">
+          <Package className="size-10 opacity-30" />
+          <p className="font-medium">Sin productos</p>
+          <p className="text-sm">Agrega tu primer producto para que el agente pueda venderlo</p>
+          <button
+            onClick={openCreate}
+            className="mt-2 text-sm text-primary underline underline-offset-2"
+          >
+            Agregar producto
+          </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

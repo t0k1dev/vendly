@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -22,7 +23,6 @@ export default function WhatsAppSettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -36,7 +36,7 @@ export default function WhatsAppSettingsPage() {
   }, [])
 
   const onSubmit = async (data: FormData) => {
-    setSaving(true); setError(null); setSuccess(false)
+    setSaving(true); setError(null)
     const res = await fetch("/api/whatsapp/connect", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -46,7 +46,7 @@ export default function WhatsAppSettingsPage() {
     setSaving(false)
     if (!res.ok) { setError(json.error ?? "Error al conectar"); return }
     setSession({ phoneNumberId: data.phoneNumberId, connected: true })
-    setSuccess(true)
+    toast.success("WhatsApp conectado")
   }
 
   const handleDisconnect = async () => {
@@ -54,7 +54,7 @@ export default function WhatsAppSettingsPage() {
     await fetch("/api/whatsapp/disconnect", { method: "POST" })
     setSaving(false)
     setSession(null)
-    setSuccess(false)
+    toast.success("WhatsApp desconectado")
   }
 
   if (loading) return <div className="p-8 text-sm text-gray-500">Cargando...</div>
@@ -104,7 +104,6 @@ export default function WhatsAppSettingsPage() {
                 )}
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}
-              {success && <p className="text-sm text-green-600">¡Conectado exitosamente!</p>}
               <Button type="submit" disabled={saving}>
                 {saving ? "Conectando..." : "Conectar"}
               </Button>
