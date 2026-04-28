@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import useSWR from "swr"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -15,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 
 type DaySchedule = { open: string; close: string; enabled: boolean }
 type BusinessHours = Record<string, DaySchedule>
@@ -48,6 +50,8 @@ const DEFAULT_CONFIG: AgentConfig = {
   outOfHoursMsg: "Gracias por escribirnos. En este momento estamos fuera de horario, te atenderemos pronto.",
   businessHours: DEFAULT_HOURS,
 }
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
 // ─── Live Preview ─────────────────────────────────────────────────────────────
 
@@ -99,25 +103,22 @@ function LivePreview({ config }: { config: AgentConfig }) {
 
 export default function AgentSettingsPage() {
   const router = useRouter()
+  const { data: serverConfig, isLoading: loading } = useSWR<AgentConfig>("/api/agent-config", fetcher)
   const [config, setConfig] = useState<AgentConfig>(DEFAULT_CONFIG)
-  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
+  // Seed local config from server data on first load
   useEffect(() => {
-    fetch("/api/agent-config")
-      .then((r) => r.json())
-      .then((data) => {
-        setConfig({
-          salutation: data.salutation ?? DEFAULT_CONFIG.salutation,
-          farewell: data.farewell ?? DEFAULT_CONFIG.farewell,
-          tone: data.tone ?? DEFAULT_CONFIG.tone,
-          outOfHoursMsg: data.outOfHoursMsg ?? DEFAULT_CONFIG.outOfHoursMsg,
-          businessHours: data.businessHours ?? DEFAULT_HOURS,
-        })
+    if (serverConfig) {
+      setConfig({
+        salutation: serverConfig.salutation ?? DEFAULT_CONFIG.salutation,
+        farewell: serverConfig.farewell ?? DEFAULT_CONFIG.farewell,
+        tone: serverConfig.tone ?? DEFAULT_CONFIG.tone,
+        outOfHoursMsg: serverConfig.outOfHoursMsg ?? DEFAULT_CONFIG.outOfHoursMsg,
+        businessHours: serverConfig.businessHours ?? DEFAULT_HOURS,
       })
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [])
+    }
+  }, [serverConfig])
 
   function setField<K extends keyof AgentConfig>(key: K, value: AgentConfig[K]) {
     setConfig((prev) => ({ ...prev, [key]: value }))
@@ -149,7 +150,19 @@ export default function AgentSettingsPage() {
     }
   }
 
-  if (loading) return <div className="p-8 text-muted-foreground">Cargando…</div>
+  if (loading) return (
+    <div className="p-8 max-w-6xl mx-auto space-y-4">
+      <Skeleton className="h-8 w-64" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="space-y-4">
+          <Skeleton className="h-48 w-full rounded-xl" />
+          <Skeleton className="h-24 w-full rounded-xl" />
+          <Skeleton className="h-64 w-full rounded-xl" />
+        </div>
+        <Skeleton className="h-80 w-full rounded-xl" />
+      </div>
+    </div>
+  )
 
   const hours = config.businessHours ?? DEFAULT_HOURS
 

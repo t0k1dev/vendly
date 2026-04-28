@@ -1,16 +1,17 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
+import useSWR from "swr"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 
-type Session = { phoneNumberId: string; connected: boolean } | null
+type WhatsAppStatus = { session: { phoneNumberId: string; connected: boolean } | null }
 
 const schema = z.object({
   phoneNumberId: z.string().min(1, "Phone Number ID requerido"),
@@ -18,9 +19,12 @@ const schema = z.object({
 })
 type FormData = z.infer<typeof schema>
 
+const fetcher = (url: string) => fetch(url).then((r) => r.json())
+
 export default function WhatsAppSettingsPage() {
-  const [session, setSession] = useState<Session>(undefined as unknown as Session)
-  const [loading, setLoading] = useState(true)
+  const { data, isLoading: loading, mutate } = useSWR<WhatsAppStatus>("/api/whatsapp/status", fetcher)
+  const session = data?.session ?? null
+
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -28,24 +32,17 @@ export default function WhatsAppSettingsPage() {
     resolver: zodResolver(schema),
   })
 
-  useEffect(() => {
-    fetch("/api/whatsapp/status")
-      .then((r) => r.json())
-      .then((d) => { setSession(d.session ?? null); setLoading(false) })
-      .catch(() => setLoading(false))
-  }, [])
-
-  const onSubmit = async (data: FormData) => {
+  const onSubmit = async (formData: FormData) => {
     setSaving(true); setError(null)
     const res = await fetch("/api/whatsapp/connect", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify(formData),
     })
     const json = await res.json()
     setSaving(false)
     if (!res.ok) { setError(json.error ?? "Error al conectar"); return }
-    setSession({ phoneNumberId: data.phoneNumberId, connected: true })
+    mutate()
     toast.success("WhatsApp conectado")
   }
 
@@ -53,7 +50,7 @@ export default function WhatsAppSettingsPage() {
     setSaving(true)
     await fetch("/api/whatsapp/disconnect", { method: "POST" })
     setSaving(false)
-    setSession(null)
+    mutate()
     toast.success("WhatsApp desconectado")
   }
 

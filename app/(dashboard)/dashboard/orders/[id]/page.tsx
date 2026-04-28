@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
+import { useState } from "react"
 import { toast } from "sonner"
+import useSWR from "swr"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
@@ -52,20 +53,16 @@ const STATUS_COLORS: Record<string, string> = {
 
 const CURRENCY_SYMBOL: Record<string, string> = { USD: "$", BOB: "Bs." }
 
+const fetcher = (url: string) => fetch(url).then((r) => r.json())
+
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const [order, setOrder] = useState<OrderDetail | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { data: order, isLoading: loading, mutate } = useSWR<OrderDetail>(
+    `/api/orders/${id}`, fetcher
+  )
+
   const [saving, setSaving] = useState(false)
   const [showCancel, setShowCancel] = useState(false)
-
-  const fetchOrder = async () => {
-    const res = await fetch(`/api/orders/${id}`)
-    if (res.ok) setOrder(await res.json())
-    setLoading(false)
-  }
-
-  useEffect(() => { fetchOrder() }, [id])
 
   const updateStatus = async (status: string) => {
     if (!order) return
@@ -77,7 +74,7 @@ export default function OrderDetailPage() {
     })
     setSaving(false)
     if (res.ok) {
-      setOrder((prev) => prev ? { ...prev, status } : prev)
+      mutate()
       toast.success(status === "CANCELADO" ? "Pedido cancelado" : `Estado actualizado a ${STATUS_LABELS[status]}`)
     } else {
       toast.error("Error al actualizar el estado")

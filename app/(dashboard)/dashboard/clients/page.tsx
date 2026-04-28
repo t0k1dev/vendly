@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { Users } from "lucide-react"
 import { toast } from "sonner"
+import useSWR from "swr"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -35,24 +36,20 @@ type Client = {
   _count: { orders: number }
 }
 
+const fetcher = (url: string) => fetch(url).then((r) => r.json())
+
 export default function ClientsPage() {
-  const [clients, setClients] = useState<Client[]>([])
-  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [tagFilter, setTagFilter] = useState("")
   const [showNew, setShowNew] = useState(false)
 
-  const fetchClients = useCallback(async () => {
-    setLoading(true)
-    const params = new URLSearchParams()
-    if (search) params.set("search", search)
-    if (tagFilter) params.set("tag", tagFilter)
-    const res = await fetch(`/api/clients?${params}`)
-    if (res.ok) setClients(await res.json())
-    setLoading(false)
-  }, [search, tagFilter])
+  const params = new URLSearchParams()
+  if (search) params.set("search", search)
+  if (tagFilter) params.set("tag", tagFilter)
 
-  useEffect(() => { fetchClients() }, [fetchClients])
+  const { data: clients = [], isLoading: loading, mutate } = useSWR<Client[]>(
+    `/api/clients?${params}`, fetcher, { keepPreviousData: true }
+  )
 
   // Collect all unique tags from loaded clients
   const allTags = Array.from(new Set(clients.flatMap((c) => c.tags)))
@@ -144,7 +141,7 @@ export default function ClientsPage() {
       {showNew && (
         <NewClientModal
           onClose={() => setShowNew(false)}
-          onCreated={() => { setShowNew(false); fetchClients(); toast.success("Cliente creado") }}
+          onCreated={() => { setShowNew(false); mutate(); toast.success("Cliente creado") }}
         />
       )}
     </div>

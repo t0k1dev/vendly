@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { ShoppingCart } from "lucide-react"
 import { toast } from "sonner"
+import useSWR from "swr"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -58,11 +59,11 @@ const STATUS_COLORS: Record<string, string> = {
 
 const CURRENCY_SYMBOL: Record<string, string> = { USD: "$", BOB: "Bs." }
 
+const fetcher = (url: string) => fetch(url).then((r) => r.json())
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<Order[]>([])
-  const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState("")
   const [filterSource, setFilterSource] = useState("")
   const [filterClient, setFilterClient] = useState("")
@@ -70,26 +71,22 @@ export default function OrdersPage() {
   const [filterTo, setFilterTo] = useState("")
   const [showNewOrder, setShowNewOrder] = useState(false)
 
-  const fetchOrders = useCallback(async () => {
-    setLoading(true)
-    const params = new URLSearchParams()
-    if (filterStatus) params.set("status", filterStatus)
-    if (filterSource) params.set("source", filterSource)
-    if (filterClient) params.set("clientSearch", filterClient)
-    if (filterFrom) params.set("from", filterFrom)
-    if (filterTo) params.set("to", filterTo)
-    const res = await fetch(`/api/orders?${params}`)
-    if (res.ok) setOrders(await res.json())
-    setLoading(false)
-  }, [filterStatus, filterSource, filterClient, filterFrom, filterTo])
+  const params = new URLSearchParams()
+  if (filterStatus) params.set("status", filterStatus)
+  if (filterSource) params.set("source", filterSource)
+  if (filterClient) params.set("clientSearch", filterClient)
+  if (filterFrom) params.set("from", filterFrom)
+  if (filterTo) params.set("to", filterTo)
 
-  useEffect(() => { fetchOrders() }, [fetchOrders])
+  const { data: orders = [], isLoading: loading, mutate } = useSWR<Order[]>(
+    `/api/orders?${params}`, fetcher, { keepPreviousData: true }
+  )
 
   const handleExport = () => {
-    const params = new URLSearchParams()
-    if (filterStatus) params.set("status", filterStatus)
-    if (filterSource) params.set("source", filterSource)
-    window.location.href = `/api/orders/export?${params}`
+    const exportParams = new URLSearchParams()
+    if (filterStatus) exportParams.set("status", filterStatus)
+    if (filterSource) exportParams.set("source", filterSource)
+    window.location.href = `/api/orders/export?${exportParams}`
   }
 
   return (
@@ -204,7 +201,7 @@ export default function OrdersPage() {
       {showNewOrder && (
         <NewOrderModal
           onClose={() => setShowNewOrder(false)}
-          onCreated={() => { setShowNewOrder(false); fetchOrders(); toast.success("Pedido creado") }}
+          onCreated={() => { setShowNewOrder(false); mutate(); toast.success("Pedido creado") }}
         />
       )}
     </div>
@@ -216,8 +213,9 @@ export default function OrdersPage() {
 type CartItem = { product: Product; quantity: number }
 
 function NewOrderModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
-  const [clients, setClients] = useState<Client[]>([])
-  const [products, setProducts] = useState<Product[]>([])
+  const { data: clients = [] } = useSWR<Client[]>("/api/clients", fetcher)
+  const { data: products = [] } = useSWR<Product[]>("/api/products", fetcher)
+
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const [clientSearch, setClientSearch] = useState("")
   const [cart, setCart] = useState<CartItem[]>([])
@@ -229,13 +227,11 @@ function NewOrderModal({ onClose, onCreated }: { onClose: () => void; onCreated:
   const [newClientPhone, setNewClientPhone] = useState("")
   const [newClientName, setNewClientName] = useState("")
   const [creatingClient, setCreatingClient] = useState(false)
+  const [localClients, setLocalClients] = useState<Client[]>([])
 
-  useEffect(() => {
-    fetch("/api/clients").then((r) => r.json()).then((d) => setClients(Array.isArray(d) ? d : []))
-    fetch("/api/products").then((r) => r.json()).then((d) => setProducts(Array.isArray(d) ? d : []))
-  }, [])
+  const allClients = [...localClients, ...clients.filter((c) => !localClients.find((lc) => lc.id === c.id))]
 
-  const filteredClients = clients.filter((c) =>
+  const filteredClients = allClients.filter((c) =>
     (c.name ?? "").toLowerCase().includes(clientSearch.toLowerCase()) ||
     c.phone.includes(clientSearch)
   )
@@ -270,7 +266,7 @@ function NewOrderModal({ onClose, onCreated }: { onClose: () => void; onCreated:
     setCreatingClient(false)
     if (!res.ok) { setError("Error al crear cliente"); return }
     const client = await res.json()
-    setClients((prev) => [client, ...prev])
+    setLocalClients((prev) => [client, ...prev])
     setSelectedClient(client)
     setNewClientPhone(""); setNewClientName("")
   }
