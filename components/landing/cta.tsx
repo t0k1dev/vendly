@@ -1,29 +1,47 @@
-import Link from "next/link"
+"use client"
+
+import { Check } from "lucide-react"
+import { motion } from "framer-motion"
 
 export function Cta() {
   return (
-    <section className="py-24 relative overflow-hidden bg-foreground text-background">
-      {/* Elementos decorativos estilo WhatsApp pero integrados en el tema oscuro */}
-      <div className="absolute -top-24 -right-24 w-[500px] h-[500px] bg-[#25D366]/10 blur-[120px] rounded-full pointer-events-none" />
-      <div className="absolute -bottom-24 -left-24 w-[500px] h-[500px] bg-[#25D366]/10 blur-[120px] rounded-full pointer-events-none" />
-      
-      <div className="relative max-w-4xl mx-auto px-6 text-center z-10">
-        <h2 className="text-4xl sm:text-5xl font-bold tracking-tight mb-6">
-          Deja de perder ventas por no responder a tiempo
-        </h2>
-        <p className="text-xl text-zinc-400 mb-10 max-w-2xl mx-auto leading-relaxed">
-          Únete a cientos de tiendas en LATAM que ya automatizaron su canal de ventas más importante con Vendly.
-        </p>
-        <Link
-          href="/signup"
-          className="inline-flex items-center justify-center rounded-full bg-[#25D366] text-white text-lg font-bold px-10 py-5 hover:bg-[#1EBE5A] hover:scale-105 transition-all duration-300 shadow-2xl shadow-[#25D366]/20"
-        >
-          Crear mi agente gratis
-        </Link>
-        <p className="mt-6 text-sm text-zinc-500 font-medium">
-          Sin tarjeta de crédito • Configuración en menos de 5 minutos
-        </p>
-      </div>
+    <section className="py-24 sm:py-32 bg-foreground">
+      <motion.div 
+        className="max-w-3xl mx-auto px-6 text-center flex flex-col items-center gap-8"
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        whileInView={{ opacity: 1, scale: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5 }}
+      >
+        <div className="flex flex-col gap-4">
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-background">
+            Empieza a vender en automático hoy.
+          </h2>
+          <p className="text-background/70 text-lg">
+            Configura tu agente en menos de 5 minutos. Sin tarjeta de crédito.
+          </p>
+        </div>
+
+        {/* Formulario inline */}
+        <div className="flex flex-col sm:flex-row gap-3 w-full max-w-md">
+          <input
+            type="email"
+            placeholder="tu@email.com"
+            className="flex-1 rounded-full bg-background/10 border border-background/20 px-5 py-3 text-sm text-background placeholder:text-background/50 outline-none focus:border-background/40 transition-colors"
+          />
+          <button className="inline-flex items-center justify-center rounded-full bg-[#25D366] text-white text-sm font-semibold px-6 py-3 hover:bg-[#20bd5a] transition-colors shrink-0">
+            Crear cuenta gratis
+          </button>
+        </div>
+
+        {/* Trust text */}
+        <div className="flex items-center gap-2">
+          <Check className="size-3.5 text-[#25D366] shrink-0" />
+          <p className="text-xs text-background/50">
+            Prueba gratis por 14 días. Cancela cuando quieras.
+          </p>
+        </div>
+      </motion.div>
     </section>
   )
 }
