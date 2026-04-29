@@ -415,56 +415,61 @@ export default function OnboardingPage({
         <div className="rounded-xl border bg-background p-6 shadow-sm">
           <StepIndicator step={step} />
 
-          <div className="mb-5">
-            <h2 className="text-lg font-semibold">{title}</h2>
-            <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
+          <div
+            key={step}
+            className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300 [animation-fill-mode:both]"
+          >
+            <div className="mb-5">
+              <h2 className="text-lg font-semibold">{title}</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
+            </div>
+
+            {step === 1 && (
+              <Step1
+                storeId={storeId}
+                defaultValues={step1Data}
+                onNext={(data) => { setStep1Data(data); setStoreName(data.name); setStep(2) }}
+              />
+            )}
+            {step === 2 && (
+              <Step2
+                storeId={storeId}
+                onNext={() => setStep(3)}
+                onSkip={() => setStep(3)}
+              />
+            )}
+            {step === 3 && (
+              <Step3
+                storeId={storeId}
+                onNext={() => { setWhatsappConnected(true); setStep(4) }}
+                onSkip={() => setStep(4)}
+              />
+            )}
+            {step === 4 && (
+              <Step4
+                storeId={storeId}
+                onNext={() => setStep(5)}
+                onBack={() => setStep(3)}
+              />
+            )}
+            {step === 5 && (
+              <Step5
+                storeId={storeId}
+                storeName={storeName}
+                whatsappConnected={whatsappConnected}
+              />
+            )}
+
+            {step > 1 && step < 4 && (
+              <button
+                type="button"
+                onClick={() => setStep((s) => s - 1)}
+                className="mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                ← Atrás
+              </button>
+            )}
           </div>
-
-          {step === 1 && (
-            <Step1
-              storeId={storeId}
-              defaultValues={step1Data}
-              onNext={(data) => { setStep1Data(data); setStoreName(data.name); setStep(2) }}
-            />
-          )}
-          {step === 2 && (
-            <Step2
-              storeId={storeId}
-              onNext={() => setStep(3)}
-              onSkip={() => setStep(3)}
-            />
-          )}
-          {step === 3 && (
-            <Step3
-              storeId={storeId}
-              onNext={() => { setWhatsappConnected(true); setStep(4) }}
-              onSkip={() => setStep(4)}
-            />
-          )}
-          {step === 4 && (
-            <Step4
-              storeId={storeId}
-              onNext={() => setStep(5)}
-              onBack={() => setStep(3)}
-            />
-          )}
-          {step === 5 && (
-            <Step5
-              storeId={storeId}
-              storeName={storeName}
-              whatsappConnected={whatsappConnected}
-            />
-          )}
-
-          {step > 1 && step < 4 && (
-            <button
-              type="button"
-              onClick={() => setStep((s) => s - 1)}
-              className="mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              ← Atrás
-            </button>
-          )}
         </div>
       </div>
     </div>

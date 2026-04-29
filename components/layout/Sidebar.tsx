@@ -15,7 +15,6 @@ import {
   MessageCircle,
   LogOut,
   ChevronLeft,
-  ChevronRight,
 } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -181,7 +180,7 @@ export function Sidebar() {
         onClick={() => setCollapsed((c) => !c)}
         className="absolute -right-3 top-16 flex size-6 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm transition-colors hover:text-foreground"
       >
-        {collapsed ? <ChevronRight className="size-3" /> : <ChevronLeft className="size-3" />}
+        <ChevronLeft className={cn("size-3 transition-transform duration-200", collapsed && "rotate-180")} />
       </button>
     </aside>
   )
