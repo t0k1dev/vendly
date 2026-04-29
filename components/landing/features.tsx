@@ -1,51 +1,61 @@
-import { MessageCircle, Package, ShoppingCart, Users, Bot, TrendingUp } from "lucide-react"
+import { MessageCircle, Package, ShoppingCart, Users, Bot, Zap } from "lucide-react"
 
 const FEATURES = [
   {
     icon: Bot,
-    title: "Agente IA por WhatsApp",
-    description: "Tu asistente virtual atiende clientes, resuelve dudas y toma pedidos automáticamente, las 24 horas.",
+    title: "Agente IA Autónomo",
+    description: "Responde de forma natural, entiende el contexto y cierra ventas como un humano, pero disponible 24/7 sin descanso.",
   },
   {
     icon: Package,
-    title: "Catálogo inteligente",
-    description: "El agente conoce tu inventario en tiempo real: precios, stock, categorías y disponibilidad.",
+    title: "Sincronización de Stock",
+    description: "El agente solo ofrece lo que realmente tienes. Conectado a tu catálogo en tiempo real para evitar ventas sin stock.",
   },
   {
     icon: ShoppingCart,
-    title: "Pedidos automáticos",
-    description: "Los pedidos de WhatsApp se registran solos en tu panel. Sin tipear, sin errores.",
+    title: "Gestión de Pedidos Automática",
+    description: "Cada compra confirmada por WhatsApp genera un pedido estructurado en tu dashboard listo para despachar.",
   },
   {
     icon: Users,
-    title: "Mini CRM incluido",
-    description: "Historial de cada cliente, tags, notas y métricas de compra — todo centralizado.",
+    title: "CRM Inteligente Incorporado",
+    description: "Guarda el historial, preferencias, tallas y comportamientos de tus clientes automáticamente en cada interacción.",
   },
   {
-    icon: TrendingUp,
-    title: "Dashboard en tiempo real",
-    description: "Ingresos, pedidos por estado, clientes nuevos y top productos en un solo vistazo.",
+    icon: Zap,
+    title: "Respuestas Instantáneas",
+    description: "No más clientes esperando horas. Vendly responde en segundos con la información correcta y precisa.",
   },
   {
     icon: MessageCircle,
-    title: "Configuración sin código",
-    description: "Personaliza el tono, horarios y mensajes de tu agente desde el panel en minutos.",
+    title: "Control Sin Programación",
+    description: "Configura el tono de voz, horarios y reglas de tu agente desde una interfaz limpia, sin escribir una línea de código.",
   },
 ]
 
 export function Features() {
   return (
-    <section className="border-t bg-muted/30">
-      <div className="max-w-5xl mx-auto px-6 py-20">
-        <h2 className="text-2xl font-bold text-center mb-12">Todo lo que necesitas para vender por WhatsApp</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <section className="py-24 sm:py-32 bg-background border-t border-border/40">
+      <div className="max-w-6xl mx-auto px-6">
+        <div className="max-w-3xl mx-auto text-center mb-20">
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-6">
+            Todo lo que necesitas, <br className="hidden sm:block" /> sin la complejidad
+          </h2>
+          <p className="text-lg text-muted-foreground">
+            Diseñado meticulosamente para que te enfoques en hacer crecer tu negocio, mientras Vendly maneja toda la atención operativa.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
           {FEATURES.map(({ icon: Icon, title, description }) => (
-            <div key={title} className="rounded-xl border bg-background p-6 space-y-3">
-              <div className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
-                <Icon className="size-4 text-muted-foreground" />
+            <div key={title} className="group relative flex flex-col gap-4">
+              <div className="flex size-12 items-center justify-center rounded-xl bg-muted border border-border/50 group-hover:bg-[#25D366] group-hover:text-white transition-all duration-300 group-hover:shadow-lg group-hover:shadow-[#25D366]/20">
+                <Icon className="size-6 text-foreground group-hover:text-white transition-colors duration-300" />
               </div>
-              <h3 className="font-semibold text-sm">{title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
+              <div>
+                <h3 className="font-bold text-lg text-foreground mb-2">{title}</h3>
+                <p className="text-muted-foreground leading-relaxed text-sm">{description}</p>
+              </div>
             </div>
           ))}
         </div>
