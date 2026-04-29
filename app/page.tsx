@@ -7,6 +7,7 @@ import { Pricing } from "@/components/landing/pricing"
 import { Faq } from "@/components/landing/faq"
 import { Cta } from "@/components/landing/cta"
 import { Footer } from "@/components/landing/footer"
+import { FloatingWhatsapp } from "@/components/landing/floating-whatsapp"
 
 export default function LandingPage() {
   return (
@@ -20,6 +21,7 @@ export default function LandingPage() {
       <Faq />
       <Cta />
       <Footer />
+      <FloatingWhatsapp />
     </div>
   )
 }
