@@ -241,8 +241,7 @@ export function Hero() {
             */}
             {"Tu "}
             <RotatingWord />
-            <br className="hidden sm:block" />
-            vende sola por WhatsApp
+            <span className="block mt-1 sm:mt-0">vende sola por WhatsApp</span>
           </h1>
 
           <p className="text-muted-foreground mx-auto mb-9 max-w-2xl text-base leading-relaxed sm:text-lg">
