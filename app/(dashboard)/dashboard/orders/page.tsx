@@ -810,10 +810,14 @@ function NewOrderModal({ onClose, onCreated }: { onClose: () => void; onCreated:
                 <textarea
                   className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
                   rows={3}
+                  maxLength={500}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Ej: Entregar por la tarde"
                 />
+                <p className={`text-xs text-right ${notes.length >= 480 ? "text-destructive" : "text-muted-foreground"}`}>
+                  {notes.length}/500
+                </p>
               </div>
             </div>
           )}
