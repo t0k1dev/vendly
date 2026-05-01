@@ -36,8 +36,6 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const period = searchParams.get("period") ?? "month"
   const range = periodRange(period)
-  const monthRange = periodRange("month")
-  const weekRange = periodRange("week")
 
   // 1. Sales revenue (ENTREGADO orders in period)
   const deliveredOrders = await prisma.order.findMany({
@@ -46,22 +44,22 @@ export async function GET(request: Request) {
   })
   const totalRevenue = deliveredOrders.reduce((sum, o) => sum + Number(o.total), 0)
 
-  // 2. Orders by status (all time)
+  // 2. Orders by status (filtered by period)
   const ordersByStatus = await prisma.order.groupBy({
     by: ["status"],
-    where: { storeId },
+    where: { storeId, createdAt: range },
     _count: { id: true },
   })
   const statusMap: Record<string, number> = {}
   for (const row of ordersByStatus) statusMap[row.status] = row._count.id
 
-  // 3. Top 5 products this month (non-cancelled)
+  // 3. Top 5 products in period (non-cancelled)
   const topItems = await prisma.orderItem.findMany({
     where: {
       order: {
         storeId,
         status: { not: "CANCELADO" },
-        createdAt: monthRange,
+        createdAt: range,
       },
     },
     select: { productId: true, quantity: true, product: { select: { name: true } } },
@@ -78,13 +76,12 @@ export async function GET(request: Request) {
     .slice(0, 5)
     .map(([id, v]) => ({ id, name: v.name, qty: v.qty }))
 
-  // 4. New clients
-  const newClientsWeek = await prisma.client.count({ where: { storeId, createdAt: weekRange } })
-  const newClientsMonth = await prisma.client.count({ where: { storeId, createdAt: monthRange } })
+  // 4. New clients in period
+  const newClients = await prisma.client.count({ where: { storeId, createdAt: range } })
 
-  // 5. Activity feed — last 10 events from orders + clients
+  // 5. Activity feed — last 10 events in period
   const recentOrders = await prisma.order.findMany({
-    where: { storeId },
+    where: { storeId, createdAt: range },
     orderBy: { createdAt: "desc" },
     take: 10,
     select: {
@@ -96,7 +93,7 @@ export async function GET(request: Request) {
     },
   })
   const recentClients = await prisma.client.findMany({
-    where: { storeId },
+    where: { storeId, createdAt: range },
     orderBy: { createdAt: "desc" },
     take: 10,
     select: { id: true, name: true, phone: true, createdAt: true },
@@ -131,8 +128,7 @@ export async function GET(request: Request) {
     period,
     ordersByStatus: statusMap,
     topProducts,
-    newClientsWeek,
-    newClientsMonth,
+    newClients,
     activity: activity.map((a) => ({ ...a, createdAt: a.createdAt.toISOString() })),
   })
 }

@@ -27,8 +27,7 @@ type Summary = {
   period: string
   ordersByStatus: Record<string, number>
   topProducts: Array<{ id: string; name: string; qty: number }>
-  newClientsWeek: number
-  newClientsMonth: number
+  newClients: number
   activity: Array<{ type: string; label: string; createdAt: string; id: string }>
 }
 
@@ -72,7 +71,7 @@ export default function DashboardPage() {
           <button
             key={p}
             onClick={() => setPeriod(p)}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors cursor-pointer ${
               period === p ? "bg-background shadow text-foreground" : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
             }`}
           >
@@ -108,17 +107,17 @@ export default function DashboardPage() {
               {
                 label: "Pedidos pendientes",
                 value: String(summary.ordersByStatus["PENDIENTE"] ?? 0),
-                sub: "Requieren atención",
+                sub: PERIOD_LABELS[period],
               },
               {
                 label: "Clientes nuevos",
-                value: String(summary.newClientsMonth),
-                sub: `${summary.newClientsWeek} esta semana`,
+                value: String(summary.newClients),
+                sub: PERIOD_LABELS[period],
               },
               {
                 label: "Pedidos entregados",
                 value: String(summary.ordersByStatus["ENTREGADO"] ?? 0),
-                sub: "Total histórico",
+                sub: PERIOD_LABELS[period],
               },
             ].map((stat, i) => (
               <Card
@@ -164,9 +163,9 @@ export default function DashboardPage() {
             </Card>
             <Card>
               <CardContent className="p-5">
-                <p className="text-sm font-semibold mb-4">Top 5 productos (este mes)</p>
+                <p className="text-sm font-semibold mb-4">Top 5 productos ({PERIOD_LABELS[period].toLowerCase()})</p>
                 {summary.topProducts.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Sin ventas este mes</p>
+                  <p className="text-sm text-muted-foreground">Sin ventas {PERIOD_LABELS[period].toLowerCase()}</p>
                 ) : (
                   <div className="space-y-3">
                     {summary.topProducts.map((p, idx) => (

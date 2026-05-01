@@ -178,7 +178,7 @@ export function Sidebar() {
       {/* Collapse toggle */}
       <button
         onClick={() => setCollapsed((c) => !c)}
-        className="absolute -right-3 top-16 flex size-6 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm transition-colors hover:text-foreground"
+        className="absolute -right-3 top-16 flex size-6 cursor-pointer items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm transition-colors hover:text-foreground"
       >
         <ChevronLeft className={cn("size-3 transition-transform duration-200", collapsed && "rotate-180")} />
       </button>
