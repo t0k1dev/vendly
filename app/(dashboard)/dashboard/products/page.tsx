@@ -10,6 +10,7 @@ import { toast } from "sonner"
 import useSWR from "swr"
 import { fetcher } from "@/lib/fetcher"
 import { Button } from "@/components/ui/button"
+import { ImageUpload } from "@/components/ui/image-upload"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
@@ -65,9 +66,7 @@ export default function ProductsPage() {
   const [showDelete, setShowDelete] = useState<Product | null>(null)
   const [saving, setSaving] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
-  const [imageFile, setImageFile] = useState<File | null>(null)
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
-  const [imageError, setImageError] = useState<string | null>(null)
+  const [imageUrls, setImageUrls] = useState<string[]>([])
   const [categoryMode, setCategoryMode] = useState<"select" | "custom">("select")
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<ProductForm>({
@@ -82,7 +81,8 @@ export default function ProductsPage() {
     setEditing(null)
     setCategoryMode("select")
     reset({ currency: "BOB", lowStockThreshold: "5", name: "", price: "", stock: "", category: "" })
-    setImageFile(null); setImagePreview(null); setApiError(null); setImageError(null)
+    setImageUrls([])
+    setApiError(null)
     setShowForm(true)
   }
 
@@ -98,33 +98,16 @@ export default function ProductsPage() {
       category: p.category ?? "",
       lowStockThreshold: String(p.lowStockThreshold),
     })
-    setImageFile(null); setImagePreview(p.imageUrl); setApiError(null); setImageError(null)
+    setImageUrls(p.imageUrl ? [p.imageUrl] : [])
+    setApiError(null)
     setShowForm(true)
   }
 
-  const onImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] ?? null
-    setImageFile(file)
-    setImageError(null)
-    if (file) setImagePreview(URL.createObjectURL(file))
-  }
-
   const onSubmit = async (data: ProductForm) => {
-    setSaving(true); setApiError(null); setImageError(null)
+    setSaving(true); setApiError(null)
 
-    let imageUrl: string | null = editing?.imageUrl ?? null
-
-    if (imageFile) {
-      const fd = new FormData()
-      fd.append("file", imageFile)
-      const uploadRes = await fetch("/api/products/upload-image", { method: "POST", body: fd })
-      if (!uploadRes.ok) {
-        setImageError("No se pudo subir la imagen — el producto se guardará sin imagen")
-      } else {
-        const { url } = await uploadRes.json()
-        imageUrl = url
-      }
-    }
+    // ImageUpload already uploaded files — just take the first URL
+    const imageUrl = imageUrls[0] ?? null
 
     const payload = {
       name: data.name,
@@ -327,16 +310,15 @@ export default function ProductsPage() {
               <Label>Umbral de stock bajo</Label>
               <Input type="number" placeholder="5" {...register("lowStockThreshold")} />
               {errors.lowStockThreshold && <p className="text-xs text-red-500">{errors.lowStockThreshold.message}</p>}
-            </div>
+             </div>
             <div className="space-y-1">
               <Label>Imagen</Label>
-              <Input type="file" accept="image/*" onChange={onImageChange} />
-              {imagePreview && (
-                <div className="relative h-24 w-24 mt-2 rounded-md overflow-hidden bg-gray-100">
-                  <Image src={imagePreview} alt="preview" fill className="object-cover" />
-                </div>
-              )}
-              {imageError && <p className="text-xs text-amber-600">{imageError}</p>}
+              <ImageUpload
+                urls={imageUrls}
+                onChange={setImageUrls}
+                uploadUrl="/api/products/upload-image"
+                max={1}
+              />
             </div>
             {apiError && <p className="text-sm text-red-500">{apiError}</p>}
             <DialogFooter className="pt-2">
