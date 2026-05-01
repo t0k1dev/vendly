@@ -73,7 +73,7 @@ export default function ProductsPage() {
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<ProductForm>({
     resolver: zodResolver(productSchema),
     mode: "onTouched",
-    defaultValues: { currency: "USD", lowStockThreshold: "5", name: "", price: "", stock: "", category: "" },
+    defaultValues: { currency: "BOB", lowStockThreshold: "5", name: "", price: "", stock: "", category: "" },
   })
 
   const CATEGORIES = ["Ropa", "Electrónica", "Alimentos", "Bebidas", "Salud", "Hogar", "Deportes", "Juguetes", "Belleza", "Mascotas"]
@@ -81,7 +81,7 @@ export default function ProductsPage() {
   const openCreate = () => {
     setEditing(null)
     setCategoryMode("select")
-    reset({ currency: "USD", lowStockThreshold: "5", name: "", price: "", stock: "", category: "" })
+    reset({ currency: "BOB", lowStockThreshold: "5", name: "", price: "", stock: "", category: "" })
     setImageFile(null); setImagePreview(null); setApiError(null); setImageError(null)
     setShowForm(true)
   }
