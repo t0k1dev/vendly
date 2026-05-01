@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react"
 import Image from "next/image"
-import { Package, Check, Search, X, Plus } from "lucide-react"
+import { Package, Check, Search, X, Plus, Pencil, Trash2 } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -354,8 +354,22 @@ export default function ProductsPage() {
                         }
                       }}
                     />
-                    <Button size="sm" variant="outline" onClick={() => openEdit(p)}>Editar</Button>
-                    <Button size="sm" variant="outline" onClick={() => setShowDelete(p)}>Eliminar</Button>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => openEdit(p)}
+                        className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        title="Editar producto"
+                      >
+                        <Pencil className="size-4" />
+                      </button>
+                      <button
+                        onClick={() => setShowDelete(p)}
+                        className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                        title="Eliminar producto"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
