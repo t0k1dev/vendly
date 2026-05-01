@@ -180,8 +180,14 @@ export default function ProductsPage() {
   const handleDelete = async () => {
     if (!showDelete) return
     setSaving(true)
-    await fetch(`/api/products/${showDelete.id}`, { method: "DELETE" })
-    setSaving(false); setShowDelete(null)
+    const res = await fetch(`/api/products/${showDelete.id}`, { method: "DELETE" })
+    setSaving(false)
+    if (!res.ok) {
+      const j = await res.json()
+      toast.error(j.error ?? "Error al eliminar el producto")
+      return
+    }
+    setShowDelete(null)
     mutate()
     toast.success("Producto eliminado")
   }

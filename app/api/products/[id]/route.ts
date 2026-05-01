@@ -66,7 +66,13 @@ export async function DELETE(
   const product = await verifyProductOwnership(user.id, id)
   if (!product) return NextResponse.json({ error: "No autorizado" }, { status: 403 })
 
-  await prisma.orderItem.deleteMany({ where: { productId: id } })
+  const orderItemCount = await prisma.orderItem.count({ where: { productId: id } })
+  if (orderItemCount > 0)
+    return NextResponse.json(
+      { error: "Este producto tiene pedidos asociados y no puede eliminarse. Desactívalo en su lugar." },
+      { status: 409 }
+    )
+
   await prisma.product.delete({ where: { id } })
   return NextResponse.json({ success: true })
 }
