@@ -41,6 +41,7 @@ const createSchema = z.object({
   category: z.string().optional().nullable(),
   lowStockThreshold: z.number().int().min(0).default(5),
   imageUrl: z.string().url().optional().nullable(),
+  imageUrls: z.array(z.string().url()).optional().default([]),
 })
 
 // POST /api/products — create a product in the store's default inventory
@@ -67,7 +68,8 @@ export async function POST(request: Request) {
       currency: parsed.data.currency,
       category: parsed.data.category ?? null,
       lowStockThreshold: parsed.data.lowStockThreshold,
-      imageUrl: parsed.data.imageUrl ?? null,
+      imageUrl: parsed.data.imageUrls?.[0] ?? parsed.data.imageUrl ?? null,
+      imageUrls: parsed.data.imageUrls ?? [],
     },
   })
 

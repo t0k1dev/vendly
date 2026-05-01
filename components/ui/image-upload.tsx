@@ -4,8 +4,8 @@ import { useCallback, useRef, useState } from "react"
 import Image from "next/image"
 import { ImagePlus, Loader2, X, AlertCircle } from "lucide-react"
 
-const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"]
-const ACCEPTED_EXT = "JPG, PNG, WEBP, GIF"
+const ACCEPTED_TYPES = ["image/jpeg", "image/png"]
+const ACCEPTED_EXT = "JPG, PNG"
 
 interface ImageItem {
   id: string

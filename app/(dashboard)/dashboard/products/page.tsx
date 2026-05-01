@@ -32,6 +32,7 @@ type Product = {
   stock: number
   category: string | null
   imageUrl: string | null
+  imageUrls: string[]
   lowStockThreshold: number
 }
 
@@ -98,16 +99,13 @@ export default function ProductsPage() {
       category: p.category ?? "",
       lowStockThreshold: String(p.lowStockThreshold),
     })
-    setImageUrls(p.imageUrl ? [p.imageUrl] : [])
+    setImageUrls(p.imageUrls?.length ? p.imageUrls : p.imageUrl ? [p.imageUrl] : [])
     setApiError(null)
     setShowForm(true)
   }
 
   const onSubmit = async (data: ProductForm) => {
     setSaving(true); setApiError(null)
-
-    // ImageUpload already uploaded files — just take the first URL
-    const imageUrl = imageUrls[0] ?? null
 
     const payload = {
       name: data.name,
@@ -116,7 +114,7 @@ export default function ProductsPage() {
       stock: Number(data.stock),
       category: data.category || null,
       lowStockThreshold: Number(data.lowStockThreshold),
-      imageUrl,
+      imageUrls,
     }
 
     let res: Response
@@ -223,105 +221,120 @@ export default function ProductsPage() {
 
       {/* Create / Edit modal */}
       <Dialog open={showForm} onOpenChange={(o) => { if (!o) setShowForm(false) }}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? "Editar producto" : "Nuevo producto"}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 py-2">
-            <div className="space-y-1">
-              <Label>Nombre *</Label>
-              <Input
-                placeholder="Ej: Camiseta azul M"
-                maxLength={300}
-                {...register("name")}
-                className={errors.name ? "border-destructive focus-visible:ring-destructive" : ""}
-              />
-              <div className="flex justify-between items-center min-h-[16px]">
-                {errors.name
-                  ? <p className="text-xs text-destructive">{errors.name.message}</p>
-                  : <span />
-                }
-                <p className={`text-xs ml-auto ${(watch("name")?.length ?? 0) >= 280 ? "text-destructive" : "text-muted-foreground"}`}>
-                  {watch("name")?.length ?? 0}/300
-                </p>
-              </div>
-            </div>
-            <div className="space-y-1">
-              <Label>Categoría</Label>
-              {categoryMode === "select" ? (
-                <select
-                  className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  {...register("category")}
-                  onChange={(e) => {
-                    if (e.target.value === "__other__") {
-                      setCategoryMode("custom")
-                      setValue("category", "")
-                    } else {
-                      setValue("category", e.target.value)
-                    }
-                  }}
-                >
-                  <option value="">Sin categoría</option>
-                  {CATEGORIES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                  <option value="__other__">Otra...</option>
-                </select>
-              ) : (
-                <div className="flex gap-2">
+          <form onSubmit={handleSubmit(onSubmit)} className="py-2">
+            <div className="flex gap-6">
+
+              {/* ── Left column: fields ── */}
+              <div className="flex-1 space-y-4 min-w-0">
+
+                <div className="space-y-1.5">
+                  <Label>Nombre *</Label>
                   <Input
-                    placeholder="Escribe la categoría"
-                    {...register("category")}
-                    autoFocus
+                    placeholder="Ej: Camiseta azul M"
+                    maxLength={300}
+                    {...register("name")}
+                    className={errors.name ? "border-destructive focus-visible:ring-destructive" : ""}
                   />
-                  <button
-                    type="button"
-                    onClick={() => { setCategoryMode("select"); setValue("category", "") }}
-                    className="shrink-0 text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
-                  >
-                    Cancelar
-                  </button>
+                  <div className="flex justify-between items-center min-h-[16px]">
+                    {errors.name
+                      ? <p className="text-xs text-destructive">{errors.name.message}</p>
+                      : <span />
+                    }
+                    <p className={`text-xs ml-auto ${(watch("name")?.length ?? 0) >= 280 ? "text-destructive" : "text-muted-foreground"}`}>
+                      {watch("name")?.length ?? 0}/300
+                    </p>
+                  </div>
                 </div>
-              )}
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-1">
-                <Label>Precio *</Label>
-                <Input type="number" step="0.01" placeholder="0.00" {...register("price")} className={errors.price ? "border-destructive focus-visible:ring-destructive" : ""} />
-                {errors.price && <p className="text-xs text-destructive">{errors.price.message}</p>}
+
+                <div className="space-y-1.5">
+                  <Label>Categoría</Label>
+                  {categoryMode === "select" ? (
+                    <select
+                      className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      {...register("category")}
+                      onChange={(e) => {
+                        if (e.target.value === "__other__") {
+                          setCategoryMode("custom")
+                          setValue("category", "")
+                        } else {
+                          setValue("category", e.target.value)
+                        }
+                      }}
+                    >
+                      <option value="">Sin categoría</option>
+                      {CATEGORIES.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                      <option value="__other__">Otra...</option>
+                    </select>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Escribe la categoría"
+                        {...register("category")}
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={() => { setCategoryMode("select"); setValue("category", "") }}
+                        className="shrink-0 text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Precio *</Label>
+                    <Input type="number" step="0.01" placeholder="0.00" {...register("price")} className={errors.price ? "border-destructive focus-visible:ring-destructive" : ""} />
+                    {errors.price && <p className="text-xs text-destructive">{errors.price.message}</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Moneda</Label>
+                    <select
+                      className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      {...register("currency")}
+                    >
+                      <option value="USD">USD</option>
+                      <option value="BOB">BOB</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Stock *</Label>
+                    <Input type="number" placeholder="0" {...register("stock")} className={errors.stock ? "border-destructive focus-visible:ring-destructive" : ""} />
+                    {errors.stock && <p className="text-xs text-destructive">{errors.stock.message}</p>}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>Umbral de stock bajo</Label>
+                  <Input type="number" placeholder="5" {...register("lowStockThreshold")} />
+                  {errors.lowStockThreshold && <p className="text-xs text-destructive">{errors.lowStockThreshold.message}</p>}
+                </div>
+
+                {apiError && <p className="text-sm text-destructive">{apiError}</p>}
               </div>
-              <div className="space-y-1">
-                <Label>Moneda</Label>
-                <select
-                  className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  {...register("currency")}
-                >
-                  <option value="USD">USD</option>
-                  <option value="BOB">BOB</option>
-                </select>
+
+              {/* ── Right column: images ── */}
+              <div className="w-52 shrink-0 space-y-1.5">
+                <Label>Imágenes</Label>
+                <ImageUpload
+                  urls={imageUrls}
+                  onChange={setImageUrls}
+                  uploadUrl="/api/products/upload-image"
+                  max={5}
+                />
               </div>
-              <div className="space-y-1">
-                <Label>Stock *</Label>
-                <Input type="number" placeholder="0" {...register("stock")} className={errors.stock ? "border-destructive focus-visible:ring-destructive" : ""} />
-                {errors.stock && <p className="text-xs text-destructive">{errors.stock.message}</p>}
-              </div>
+
             </div>
-            <div className="space-y-1">
-              <Label>Umbral de stock bajo</Label>
-              <Input type="number" placeholder="5" {...register("lowStockThreshold")} />
-              {errors.lowStockThreshold && <p className="text-xs text-red-500">{errors.lowStockThreshold.message}</p>}
-             </div>
-            <div className="space-y-1">
-              <Label>Imagen</Label>
-              <ImageUpload
-                urls={imageUrls}
-                onChange={setImageUrls}
-                uploadUrl="/api/products/upload-image"
-                max={1}
-              />
-            </div>
-            {apiError && <p className="text-sm text-red-500">{apiError}</p>}
-            <DialogFooter className="pt-2">
+
+            <DialogFooter className="pt-5">
               <Button type="button" variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button>
               <Button type="submit" disabled={saving}>{saving ? "Guardando..." : editing ? "Guardar" : "Crear"}</Button>
             </DialogFooter>

@@ -22,6 +22,7 @@ const updateSchema = z.object({
   currency: z.enum(["USD", "BOB"]).optional(),
   category: z.string().optional(),
   imageUrl: z.string().url().optional().nullable(),
+  imageUrls: z.array(z.string().url()).optional(),
   lowStockThreshold: z.number().int().min(0).optional(),
 })
 
@@ -40,7 +41,16 @@ export async function PATCH(
   const parsed = updateSchema.safeParse(await request.json())
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
-  const updated = await prisma.product.update({ where: { id }, data: parsed.data })
+  const { imageUrls, imageUrl, ...rest } = parsed.data
+  const updateData = {
+    ...rest,
+    ...(imageUrls !== undefined && {
+      imageUrls,
+      imageUrl: imageUrls[0] ?? null,
+    }),
+    ...(imageUrls === undefined && imageUrl !== undefined && { imageUrl }),
+  }
+  const updated = await prisma.product.update({ where: { id }, data: updateData })
   return NextResponse.json(updated)
 }
 

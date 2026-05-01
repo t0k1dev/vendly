@@ -97,6 +97,7 @@ model Product {
   stock             Int      @default(0)
   category          String?
   imageUrl          String?
+  imageUrls         String[]
   lowStockThreshold Int      @default(5)
   createdAt         DateTime @default(now())
 
