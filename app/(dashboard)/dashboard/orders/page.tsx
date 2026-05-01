@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { ShoppingCart, Search, SlidersHorizontal, X, ChevronDown } from "lucide-react"
+import { ShoppingCart, Search, SlidersHorizontal, X, ChevronDown, Check } from "lucide-react"
 import { toast } from "sonner"
 import useSWR from "swr"
 import { fetcher } from "@/lib/fetcher"
@@ -527,10 +527,17 @@ function OrderDetailModal({ id, onClose, onUpdated }: { id: string; onClose: () 
 
 type CartItem = { product: Product; quantity: number }
 
+const ORDER_STEPS = [
+  { n: 1, label: "Cliente" },
+  { n: 2, label: "Productos" },
+  { n: 3, label: "Notas" },
+] as const
+
 function NewOrderModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const { data: clients = [] } = useSWR<Client[]>("/api/clients", fetcher)
   const { data: products = [] } = useSWR<Product[]>("/api/products", fetcher)
 
+  const [step, setStep] = useState<1 | 2 | 3>(1)
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const [clientSearch, setClientSearch] = useState("")
   const [cart, setCart] = useState<CartItem[]>([])
@@ -586,6 +593,17 @@ function NewOrderModal({ onClose, onCreated }: { onClose: () => void; onCreated:
     setNewClientPhone(""); setNewClientName("")
   }
 
+  const handleNext = () => {
+    setError(null)
+    if (step === 1) {
+      if (!selectedClient) { setError("Selecciona un cliente para continuar"); return }
+      setStep(2)
+    } else if (step === 2) {
+      if (cart.length === 0) { setError("Agrega al menos un producto"); return }
+      setStep(3)
+    }
+  }
+
   const handleSubmit = async () => {
     if (!selectedClient) { setError("Selecciona un cliente"); return }
     if (cart.length === 0) { setError("Agrega al menos un producto"); return }
@@ -607,140 +625,223 @@ function NewOrderModal({ onClose, onCreated }: { onClose: () => void; onCreated:
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose() }}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] sm:max-w-md flex flex-col max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Nuevo pedido</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-5 py-2">
-          {/* Client selector */}
-          <div className="space-y-2">
-            <Label>Cliente</Label>
-            {selectedClient ? (
-              <div className="flex items-center justify-between rounded-lg border px-3 py-2">
-                <span className="text-sm font-medium">{selectedClient.name ?? selectedClient.phone}</span>
-                <button className="text-xs text-gray-400 hover:text-gray-600" onClick={() => setSelectedClient(null)}>
-                  Cambiar
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-2">
+        {/* Step indicator */}
+        <div className="flex items-center gap-1 px-1 pb-2">
+          {ORDER_STEPS.map((s, i) => (
+            <div key={s.n} className="flex items-center gap-1 flex-1">
+              <button
+                type="button"
+                onClick={() => {
+                  if (s.n < step) { setError(null); setStep(s.n as 1 | 2 | 3) }
+                }}
+                className={`flex items-center gap-1.5 text-xs font-medium transition-colors whitespace-nowrap ${step === s.n ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold transition-colors shrink-0 ${step === s.n ? "bg-foreground text-background" : step > s.n ? "bg-foreground/20 text-foreground" : "bg-muted text-muted-foreground"}`}>
+                  {step > s.n ? <Check className="size-2.5" /> : s.n}
+                </span>
+                {s.label}
+              </button>
+              {i < ORDER_STEPS.length - 1 && <div className="h-px flex-1 bg-border mx-1" />}
+            </div>
+          ))}
+        </div>
+
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto px-1">
+
+          {/* ── Step 1: Cliente ── */}
+          {step === 1 && (
+            <div className="space-y-3 pb-4">
+              {selectedClient ? (
+                <div className="flex items-center justify-between rounded-lg border px-3 py-2">
+                  <div>
+                    <p className="text-sm font-medium">{selectedClient.name ?? selectedClient.phone}</p>
+                    {selectedClient.name && <p className="text-xs text-muted-foreground">{selectedClient.phone}</p>}
+                  </div>
+                  <button className="text-xs text-muted-foreground hover:text-foreground" onClick={() => setSelectedClient(null)}>
+                    Cambiar
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-1.5">
+                    <Label>Buscar cliente existente</Label>
+                    <Input
+                      placeholder="Nombre o teléfono..."
+                      value={clientSearch}
+                      onChange={(e) => setClientSearch(e.target.value)}
+                    />
+                    {clientSearch && (
+                      <div className="border rounded-lg divide-y max-h-36 overflow-y-auto">
+                        {filteredClients.length === 0 ? (
+                          <p className="px-3 py-2 text-sm text-muted-foreground">Sin resultados</p>
+                        ) : filteredClients.map((c) => (
+                          <button
+                            key={c.id}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50"
+                            onClick={() => { setSelectedClient(c); setClientSearch(""); setError(null) }}
+                          >
+                            {c.name ?? c.phone}
+                            {c.name && <span className="text-muted-foreground text-xs ml-1">· {c.phone}</span>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5 pt-1">
+                    <Label>O crear nuevo cliente</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Teléfono *"
+                        value={newClientPhone}
+                        onChange={(e) => setNewClientPhone(e.target.value)}
+                      />
+                      <Input
+                        placeholder="Nombre (opcional)"
+                        value={newClientName}
+                        onChange={(e) => setNewClientName(e.target.value)}
+                      />
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full"
+                      onClick={handleCreateClient}
+                      disabled={creatingClient || !newClientPhone}
+                    >
+                      {creatingClient ? "Creando..." : "+ Crear cliente"}
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* ── Step 2: Productos ── */}
+          {step === 2 && (
+            <div className="space-y-3 pb-4">
+              <div className="space-y-1.5">
+                <Label>Buscar producto</Label>
                 <Input
-                  placeholder="Buscar por nombre o teléfono..."
-                  value={clientSearch}
-                  onChange={(e) => setClientSearch(e.target.value)}
+                  placeholder="Nombre del producto..."
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
                 />
-                {clientSearch && (
-                  <div className="border rounded-lg divide-y max-h-32 overflow-y-auto">
-                    {filteredClients.length === 0 ? (
-                      <p className="px-3 py-2 text-sm text-gray-400">Sin resultados</p>
-                    ) : filteredClients.map((c) => (
+                {productSearch && (
+                  <div className="border rounded-lg divide-y max-h-40 overflow-y-auto">
+                    {filteredProducts.length === 0 ? (
+                      <p className="px-3 py-2 text-sm text-muted-foreground">Sin resultados</p>
+                    ) : filteredProducts.map((p) => (
                       <button
-                        key={c.id}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
-                        onClick={() => { setSelectedClient(c); setClientSearch("") }}
+                        key={p.id}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 flex justify-between"
+                        onClick={() => { addToCart(p); setProductSearch(""); setError(null) }}
                       >
-                        {c.name ?? c.phone} {c.name && <span className="text-gray-400 text-xs">· {c.phone}</span>}
+                        <span>{p.name}</span>
+                        <span className="text-muted-foreground">{CURRENCY_SYMBOL[p.currency]}{Number(p.price).toFixed(2)} · Stock: {p.stock}</span>
                       </button>
                     ))}
                   </div>
                 )}
-                {/* Inline create */}
-                <div className="flex gap-2 pt-1">
-                  <Input
-                    placeholder="Teléfono nuevo cliente"
-                    value={newClientPhone}
-                    onChange={(e) => setNewClientPhone(e.target.value)}
-                  />
-                  <Input
-                    placeholder="Nombre (opcional)"
-                    value={newClientName}
-                    onChange={(e) => setNewClientName(e.target.value)}
-                  />
-                  <Button size="sm" variant="outline" onClick={handleCreateClient} disabled={creatingClient || !newClientPhone}>
-                    + Crear
-                  </Button>
-                </div>
               </div>
-            )}
-          </div>
 
-          {/* Product selector */}
-          <div className="space-y-2">
-            <Label>Productos</Label>
-            <Input
-              placeholder="Buscar producto..."
-              value={productSearch}
-              onChange={(e) => setProductSearch(e.target.value)}
-            />
-            {productSearch && (
-              <div className="border rounded-lg divide-y max-h-40 overflow-y-auto">
-                {filteredProducts.length === 0 ? (
-                  <p className="px-3 py-2 text-sm text-gray-400">Sin resultados</p>
-                ) : filteredProducts.map((p) => (
-                  <button
-                    key={p.id}
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex justify-between"
-                    onClick={() => { addToCart(p); setProductSearch("") }}
-                  >
-                    <span>{p.name}</span>
-                    <span className="text-gray-400">{CURRENCY_SYMBOL[p.currency]}{Number(p.price).toFixed(2)} · Stock: {p.stock}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Cart */}
-            {cart.length > 0 && (
-              <div className="border rounded-lg divide-y mt-2">
-                {cart.map((i) => (
-                  <div key={i.product.id} className="flex items-center justify-between px-3 py-2">
-                    <span className="text-sm">{i.product.name}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-400">
-                        {CURRENCY_SYMBOL[i.product.currency]}{(Number(i.product.price) * i.quantity).toFixed(2)}
-                      </span>
-                      <input
-                        type="number"
-                        min={1}
-                        max={i.product.stock}
-                        value={i.quantity}
-                        onChange={(e) => updateQty(i.product.id, Number(e.target.value))}
-                        className="w-14 border rounded px-2 py-0.5 text-sm text-center"
-                      />
-                      <button className="text-red-400 hover:text-red-600 text-xs" onClick={() => updateQty(i.product.id, 0)}>✕</button>
+              {/* Cart */}
+              {cart.length > 0 ? (
+                <div className="border rounded-lg divide-y">
+                  {cart.map((i) => (
+                    <div key={i.product.id} className="flex items-center justify-between px-3 py-2">
+                      <span className="text-sm truncate flex-1 mr-2">{i.product.name}</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs text-muted-foreground">
+                          {CURRENCY_SYMBOL[i.product.currency]}{(Number(i.product.price) * i.quantity).toFixed(2)}
+                        </span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={i.product.stock}
+                          value={i.quantity}
+                          onChange={(e) => updateQty(i.product.id, Number(e.target.value))}
+                          className="w-14 border rounded px-2 py-0.5 text-sm text-center"
+                        />
+                        <button className="text-destructive/60 hover:text-destructive text-xs" onClick={() => updateQty(i.product.id, 0)}>
+                          <X className="size-3.5" />
+                        </button>
+                      </div>
                     </div>
+                  ))}
+                  <div className="px-3 py-2 flex justify-between font-semibold text-sm bg-muted/30">
+                    <span>Total</span>
+                    <span>${total.toFixed(2)}</span>
                   </div>
-                ))}
-                <div className="px-3 py-2 flex justify-between font-semibold text-sm bg-gray-50">
-                  <span>Total</span>
-                  <span>${total.toFixed(2)}</span>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">Sin productos en el carrito</p>
+              )}
+            </div>
+          )}
+
+          {/* ── Step 3: Notas ── */}
+          {step === 3 && (
+            <div className="space-y-3 pb-4">
+              {/* Summary */}
+              <div className="rounded-lg border divide-y text-sm">
+                <div className="flex justify-between px-3 py-2">
+                  <span className="text-muted-foreground">Cliente</span>
+                  <span className="font-medium">{selectedClient?.name ?? selectedClient?.phone}</span>
+                </div>
+                <div className="flex justify-between px-3 py-2">
+                  <span className="text-muted-foreground">Productos</span>
+                  <span className="font-medium">{cart.length} ítem{cart.length !== 1 ? "s" : ""}</span>
+                </div>
+                <div className="flex justify-between px-3 py-2">
+                  <span className="text-muted-foreground">Total</span>
+                  <span className="font-semibold">${total.toFixed(2)}</span>
                 </div>
               </div>
-            )}
-          </div>
 
-          {/* Notes */}
-          <div className="space-y-1">
-            <Label>Notas (opcional)</Label>
-            <textarea
-              className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-              rows={2}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Ej: Entregar por la tarde"
-            />
-          </div>
+              <div className="space-y-1.5">
+                <Label>Notas (opcional)</Label>
+                <textarea
+                  className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                  rows={3}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Ej: Entregar por la tarde"
+                />
+              </div>
+            </div>
+          )}
 
-          {error && <p className="text-sm text-red-500">{error}</p>}
+          {error && <p className="text-sm text-destructive pb-2">{error}</p>}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button onClick={handleSubmit} disabled={saving}>
-            {saving ? "Creando..." : `Crear pedido · $${total.toFixed(2)}`}
-          </Button>
-        </DialogFooter>
+        {/* Footer */}
+        <div className="border-t pt-4 flex justify-between gap-2">
+          {step === 1 ? (
+            <>
+              <Button variant="outline" onClick={onClose}>Cancelar</Button>
+              <Button onClick={handleNext}>Siguiente</Button>
+            </>
+          ) : step === 2 ? (
+            <>
+              <Button variant="outline" onClick={() => { setStep(1); setError(null) }}>Atrás</Button>
+              <Button onClick={handleNext}>Siguiente</Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" onClick={() => { setStep(2); setError(null) }}>Atrás</Button>
+              <Button onClick={handleSubmit} disabled={saving}>
+                {saving ? "Creando..." : `Crear pedido · $${total.toFixed(2)}`}
+              </Button>
+            </>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   )
