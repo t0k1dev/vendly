@@ -359,7 +359,7 @@ export default function ProductsPage() {
               </div>
             )}
 
-            <DialogFooter className="pt-4 pb-4 sticky bottom-0 bg-popover">
+            <DialogFooter className="pt-4 pb-6 sticky bottom-0 bg-popover">
               {step === 1 ? (
                 <>
                   <Button type="button" variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button>
