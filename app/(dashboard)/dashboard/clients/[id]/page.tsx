@@ -3,11 +3,14 @@
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
+import { toast } from "sonner"
+import useSWR from "swr"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 
 type Order = {
   id: string
@@ -42,10 +45,14 @@ const STATUS_LABELS: Record<string, string> = {
   ENTREGADO: "Entregado", CANCELADO: "Cancelado",
 }
 
+const fetcher = (url: string) => fetch(url).then((r) => r.json())
+
 export default function ClientProfilePage() {
   const { id } = useParams<{ id: string }>()
-  const [client, setClient] = useState<ClientDetail | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { data: client, isLoading: loading, mutate } = useSWR<ClientDetail>(
+    `/api/clients/${id}`, fetcher
+  )
+
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -57,20 +64,15 @@ export default function ClientProfilePage() {
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState("")
 
-  const fetchClient = async () => {
-    const res = await fetch(`/api/clients/${id}`)
-    if (res.ok) {
-      const data = await res.json()
-      setClient(data)
-      setName(data.name ?? "")
-      setLocation(data.location ?? "")
-      setNotes(data.notes ?? "")
-      setTags(data.tags ?? [])
+  // Sync form state when client data loads
+  useEffect(() => {
+    if (client) {
+      setName(client.name ?? "")
+      setLocation(client.location ?? "")
+      setNotes(client.notes ?? "")
+      setTags(client.tags ?? [])
     }
-    setLoading(false)
-  }
-
-  useEffect(() => { fetchClient() }, [id])
+  }, [client])
 
   const handleSave = async () => {
     setSaving(true); setError(null)
@@ -81,9 +83,9 @@ export default function ClientProfilePage() {
     })
     setSaving(false)
     if (!res.ok) { setError("Error al guardar"); return }
-    const updated = await res.json()
-    setClient((prev) => prev ? { ...prev, ...updated } : prev)
+    mutate()
     setEditing(false)
+    toast.success("Cliente actualizado")
   }
 
   const addTag = () => {
@@ -94,7 +96,13 @@ export default function ClientProfilePage() {
 
   const removeTag = (t: string) => setTags((prev) => prev.filter((x) => x !== t))
 
-  if (loading) return <div className="p-8 text-sm text-gray-500">Cargando...</div>
+  if (loading) return (
+    <div className="max-w-2xl mx-auto px-4 py-8 space-y-4">
+      <Skeleton className="h-4 w-16" />
+      <Skeleton className="h-8 w-48" />
+      <Skeleton className="h-48 w-full rounded-xl" />
+    </div>
+  )
   if (!client) return <div className="p-8 text-sm text-red-500">Cliente no encontrado.</div>
 
   const totalSpent = client.orders

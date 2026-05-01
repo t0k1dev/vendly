@@ -8,7 +8,6 @@ import { z } from "zod"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 
@@ -41,21 +40,41 @@ type Step4Data = z.infer<typeof step4Schema>
 
 const TOTAL_STEPS = 5
 
-// ─── Progress Bar ─────────────────────────────────────────────────────────────
+// ─── Step Indicator ───────────────────────────────────────────────────────────
 
-function ProgressBar({ step }: { step: number }) {
+function StepIndicator({ step }: { step: number }) {
   return (
-    <div className="mb-8">
-      <div className="flex justify-between text-xs text-gray-500 mb-2">
-        <span>Paso {step} de {TOTAL_STEPS}</span>
-        <span>{Math.round((step / TOTAL_STEPS) * 100)}%</span>
+    <div className="mb-6">
+      <div className="flex items-center gap-1.5">
+        {Array.from({ length: TOTAL_STEPS }, (_, i) => {
+          const n = i + 1
+          const isDone = n < step
+          const isActive = n === step
+          return (
+            <div key={n} className="flex items-center gap-1.5 flex-1 last:flex-none">
+              <div
+                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
+                  isDone
+                    ? "bg-foreground text-background"
+                    : isActive
+                    ? "bg-foreground text-background"
+                    : "border border-muted-foreground/30 text-muted-foreground/50"
+                }`}
+              >
+                {isDone ? (
+                  <svg className="size-3" viewBox="0 0 12 12" fill="none">
+                    <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                ) : n}
+              </div>
+              {n < TOTAL_STEPS && (
+                <div className={`flex-1 h-px transition-colors ${n < step ? "bg-foreground" : "bg-muted-foreground/20"}`} />
+              )}
+            </div>
+          )
+        })}
       </div>
-      <div className="h-1.5 w-full rounded-full bg-gray-200">
-        <div
-          className="h-1.5 rounded-full bg-black transition-all duration-300"
-          style={{ width: `${(step / TOTAL_STEPS) * 100}%` }}
-        />
-      </div>
+      <p className="mt-3 text-xs text-muted-foreground">Paso {step} de {TOTAL_STEPS}</p>
     </div>
   )
 }
@@ -346,7 +365,7 @@ function Step5({
           {whatsappConnected ? (
             <><span className="text-green-600">✓</span><span>WhatsApp conectado</span></>
           ) : (
-            <><span className="text-gray-400">–</span><span className="text-gray-500">WhatsApp pendiente (puedes conectarlo desde configuración)</span></>
+            <><span className="text-muted-foreground">–</span><span className="text-muted-foreground">WhatsApp pendiente (puedes conectarlo desde configuración)</span></>
           )}
         </div>
         <div className="flex items-center gap-2 text-sm">
@@ -386,62 +405,73 @@ export default function OnboardingPage({
   const { title, description } = STEP_TITLES[step - 1]
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <ProgressBar step={step} />
-          <CardTitle className="text-xl font-bold">{title}</CardTitle>
-          <CardDescription>{description}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {step === 1 && (
-            <Step1
-              storeId={storeId}
-              defaultValues={step1Data}
-              onNext={(data) => { setStep1Data(data); setStoreName(data.name); setStep(2) }}
-            />
-          )}
-          {step === 2 && (
-            <Step2
-              storeId={storeId}
-              onNext={() => setStep(3)}
-              onSkip={() => setStep(3)}
-            />
-          )}
-          {step === 3 && (
-            <Step3
-              storeId={storeId}
-              onNext={() => { setWhatsappConnected(true); setStep(4) }}
-              onSkip={() => setStep(4)}
-            />
-          )}
-          {step === 4 && (
-            <Step4
-              storeId={storeId}
-              onNext={() => setStep(5)}
-              onBack={() => setStep(3)}
-            />
-          )}
-          {step === 5 && (
-            <Step5
-              storeId={storeId}
-              storeName={storeName}
-              whatsappConnected={whatsappConnected}
-            />
-          )}
-        </CardContent>
-        {step > 1 && step < 4 && (
-          <CardFooter>
-            <button
-              type="button"
-              onClick={() => setStep((s) => s - 1)}
-              className="text-sm text-gray-500 hover:underline"
-            >
-              ← Atrás
-            </button>
-          </CardFooter>
-        )}
-      </Card>
+    <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
+      <div className="w-full max-w-md space-y-2">
+        {/* Logo */}
+        <div className="text-center mb-6">
+          <span className="text-2xl font-bold tracking-tight">Vendly</span>
+        </div>
+
+        <div className="rounded-xl border bg-background p-6 shadow-sm">
+          <StepIndicator step={step} />
+
+          <div
+            key={step}
+            className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300 [animation-fill-mode:both]"
+          >
+            <div className="mb-5">
+              <h2 className="text-lg font-semibold">{title}</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
+            </div>
+
+            {step === 1 && (
+              <Step1
+                storeId={storeId}
+                defaultValues={step1Data}
+                onNext={(data) => { setStep1Data(data); setStoreName(data.name); setStep(2) }}
+              />
+            )}
+            {step === 2 && (
+              <Step2
+                storeId={storeId}
+                onNext={() => setStep(3)}
+                onSkip={() => setStep(3)}
+              />
+            )}
+            {step === 3 && (
+              <Step3
+                storeId={storeId}
+                onNext={() => { setWhatsappConnected(true); setStep(4) }}
+                onSkip={() => setStep(4)}
+              />
+            )}
+            {step === 4 && (
+              <Step4
+                storeId={storeId}
+                onNext={() => setStep(5)}
+                onBack={() => setStep(3)}
+              />
+            )}
+            {step === 5 && (
+              <Step5
+                storeId={storeId}
+                storeName={storeName}
+                whatsappConnected={whatsappConnected}
+              />
+            )}
+
+            {step > 1 && step < 4 && (
+              <button
+                type="button"
+                onClick={() => setStep((s) => s - 1)}
+                className="mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                ← Atrás
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

@@ -1,7 +1,6 @@
 "use client"
 
 import { useRef, useState } from "react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
@@ -18,7 +17,6 @@ type Message = {
 let msgId = 0
 
 export default function PlaygroundPage() {
-  const router = useRouter()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
@@ -81,12 +79,7 @@ export default function PlaygroundPage() {
     <div className="flex flex-col h-screen max-h-screen">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b bg-background">
-        <div className="flex items-center gap-3">
-          <button onClick={() => router.back()} className="text-muted-foreground hover:text-foreground text-sm">
-            ← Volver
-          </button>
-          <h1 className="text-lg font-semibold">Playground del agente</h1>
-        </div>
+        <h1 className="text-lg font-semibold">Playground del agente</h1>
         <Button variant="outline" size="sm" onClick={reset}>
           Reiniciar conversación
         </Button>
