@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import Link from "next/link"
 import { ShoppingCart, Search, SlidersHorizontal, X, ChevronDown } from "lucide-react"
 import { toast } from "sonner"
 import useSWR from "swr"
@@ -78,6 +77,7 @@ export default function OrdersPage() {
   const [draftValue, setDraftValue] = useState("")
   const pickerRef = useRef<HTMLDivElement>(null)
   const [showNewOrder, setShowNewOrder] = useState(false)
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
 
   // Close picker on outside click
   useEffect(() => {
@@ -324,9 +324,12 @@ export default function OrdersPage() {
                     {new Date(o.createdAt).toLocaleDateString("es-BO")}
                   </TableCell>
                   <TableCell>
-                    <Link href={`/dashboard/orders/${o.id}`} className="text-xs text-blue-600 hover:underline">
+                    <button
+                      onClick={() => setSelectedOrderId(o.id)}
+                      className="text-xs text-blue-600 hover:underline"
+                    >
                       Ver
-                    </Link>
+                    </button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -342,7 +345,181 @@ export default function OrdersPage() {
           onCreated={() => { setShowNewOrder(false); mutate(); toast.success("Pedido creado") }}
         />
       )}
+
+      {/* Order Detail Modal */}
+      {selectedOrderId && (
+        <OrderDetailModal
+          id={selectedOrderId}
+          onClose={() => setSelectedOrderId(null)}
+          onUpdated={mutate}
+        />
+      )}
     </div>
+  )
+}
+
+// ─── Order Detail Modal ───────────────────────────────────────────────────────
+
+type OrderDetail = {
+  id: string
+  status: string
+  source: string
+  total: string
+  notes: string | null
+  createdAt: string
+  client: { id: string; name: string | null; phone: string; location: string | null }
+  items: Array<{
+    id: string
+    quantity: number
+    unitPrice: string
+    product: { id: string; name: string; currency: string }
+  }>
+}
+
+const STATUS_FLOW = ["PENDIENTE", "CONFIRMADO", "ENVIADO", "ENTREGADO"]
+
+function OrderDetailModal({ id, onClose, onUpdated }: { id: string; onClose: () => void; onUpdated: () => void }) {
+  const { data: order, isLoading, error, mutate } = useSWR<OrderDetail>(`/api/orders/${id}`, fetcher)
+  const [saving, setSaving] = useState(false)
+  const [showCancel, setShowCancel] = useState(false)
+
+  const updateStatus = async (status: string) => {
+    setSaving(true)
+    const res = await fetch(`/api/orders/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    })
+    setSaving(false)
+    if (res.ok) {
+      mutate(); onUpdated()
+      toast.success(status === "CANCELADO" ? "Pedido cancelado" : `Estado: ${STATUS_LABELS[status]}`)
+    } else {
+      toast.error("Error al actualizar el estado")
+    }
+    setShowCancel(false)
+  }
+
+  return (
+    <>
+      <Dialog open onOpenChange={(o) => { if (!o) onClose() }}>
+        <DialogContent className="w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Pedido</DialogTitle>
+          </DialogHeader>
+
+          {error && <p className="text-sm text-destructive py-4">Error al cargar el pedido.</p>}
+          {isLoading && (
+            <div className="space-y-3 py-2">
+              <Skeleton className="h-5 w-2/3" />
+              <Skeleton className="h-20 w-full rounded-xl" />
+              <Skeleton className="h-32 w-full rounded-xl" />
+            </div>
+          )}
+
+          {order && (() => {
+            const isCancelled = order.status === "CANCELADO"
+            const currentIdx = STATUS_FLOW.indexOf(order.status)
+            return (
+              <div className="space-y-4 py-1">
+                {/* Header badges */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-xs text-muted-foreground font-mono truncate flex-1">{order.id}</p>
+                  <Badge variant={order.source === "WHATSAPP" ? "default" : "outline"} className="text-xs">
+                    {order.source === "WHATSAPP" ? "WhatsApp" : "Manual"}
+                  </Badge>
+                  <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[order.status]}`}>
+                    {STATUS_LABELS[order.status]}
+                  </span>
+                </div>
+
+                {/* Progress bar */}
+                {!isCancelled && (
+                  <div className="flex items-center gap-1">
+                    {STATUS_FLOW.map((s, idx) => (
+                      <div key={s} className="flex items-center gap-1 flex-1">
+                        <div className={`h-1.5 flex-1 rounded-full ${idx <= currentIdx ? "bg-blue-500" : "bg-muted"}`} />
+                        {idx === STATUS_FLOW.length - 1 && (
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">{STATUS_LABELS[s]}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Client */}
+                <div className="rounded-xl border p-4">
+                  <p className="text-xs text-muted-foreground mb-1">Cliente</p>
+                  <p className="font-semibold text-sm">{order.client.name ?? order.client.phone}</p>
+                  {order.client.name && <p className="text-sm text-muted-foreground">{order.client.phone}</p>}
+                  {order.client.location && <p className="text-sm text-muted-foreground">{order.client.location}</p>}
+                </div>
+
+                {/* Items */}
+                <div className="rounded-xl border p-4">
+                  <p className="text-xs text-muted-foreground mb-2">Productos</p>
+                  <div className="divide-y">
+                    {order.items.map((item) => {
+                      const symbol = CURRENCY_SYMBOL[item.product.currency] ?? "$"
+                      return (
+                        <div key={item.id} className="flex justify-between py-2 text-sm">
+                          <span>{item.product.name} <span className="text-muted-foreground">×{item.quantity}</span></span>
+                          <span className="font-medium">{symbol}{(Number(item.unitPrice) * item.quantity).toFixed(2)}</span>
+                        </div>
+                      )
+                    })}
+                    <div className="flex justify-between pt-2 font-semibold text-sm">
+                      <span>Total</span>
+                      <span>${Number(order.total).toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Notes */}
+                {order.notes && (
+                  <div className="rounded-xl border p-4">
+                    <p className="text-xs text-muted-foreground mb-1">Notas</p>
+                    <p className="text-sm">{order.notes}</p>
+                  </div>
+                )}
+
+                <p className="text-xs text-muted-foreground">
+                  Creado el {new Date(order.createdAt).toLocaleString("es-BO")}
+                </p>
+
+                {/* Actions */}
+                {!isCancelled && (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {currentIdx < STATUS_FLOW.length - 1 && (
+                      <Button onClick={() => updateStatus(STATUS_FLOW[currentIdx + 1])} disabled={saving}>
+                        Marcar como {STATUS_LABELS[STATUS_FLOW[currentIdx + 1]]}
+                      </Button>
+                    )}
+                    <Button variant="outline" className="text-red-600 border-red-200" onClick={() => setShowCancel(true)}>
+                      Cancelar pedido
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel confirmation */}
+      <Dialog open={showCancel} onOpenChange={(o) => { if (!o) setShowCancel(false) }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>¿Cancelar pedido?</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground py-2">Esta acción no se puede deshacer.</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCancel(false)}>Volver</Button>
+            <Button onClick={() => updateStatus("CANCELADO")} disabled={saving}>
+              {saving ? "Cancelando..." : "Sí, cancelar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 
