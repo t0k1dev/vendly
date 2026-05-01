@@ -229,8 +229,8 @@ export default function ProductsPage() {
                       <Image src={p.imageUrl} alt={p.name} fill className="object-cover" />
                     </div>
                   ) : (
-                    <div className="h-16 w-16 shrink-0 rounded-md bg-gray-100 flex items-center justify-center text-gray-300 text-xl">
-                      ?
+                    <div className="h-16 w-16 shrink-0 rounded-md bg-muted flex items-center justify-center">
+                      <Package className="size-6 text-muted-foreground/40" />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
