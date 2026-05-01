@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import useSWR from "swr"
+import { fetcher } from "@/lib/fetcher"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 
@@ -34,8 +35,6 @@ type Summary = {
 const PERIOD_LABELS = { today: "Hoy", week: "Esta semana", month: "Este mes" } as const
 type Period = keyof typeof PERIOD_LABELS
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
-
 function PopNumber({ value }: { value: string }) {
   const chars = value.split("")
   return (
@@ -55,7 +54,7 @@ function PopNumber({ value }: { value: string }) {
 
 export default function DashboardPage() {
   const [period, setPeriod] = useState<Period>("month")
-  const { data: summary, isLoading } = useSWR<Summary>(
+  const { data: summary, isLoading, error } = useSWR<Summary>(
     `/api/dashboard/summary?period=${period}`,
     fetcher,
     { keepPreviousData: true }
@@ -74,7 +73,7 @@ export default function DashboardPage() {
             key={p}
             onClick={() => setPeriod(p)}
             className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-              period === p ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"
+              period === p ? "bg-background shadow text-foreground" : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
             }`}
           >
             {PERIOD_LABELS[p]}
@@ -82,7 +81,9 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {isLoading && !summary ? (
+      {error ? (
+        <p className="text-sm text-destructive">Error al cargar el dashboard.</p>
+      ) : isLoading && !summary ? (
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[...Array(4)].map((_, i) => (

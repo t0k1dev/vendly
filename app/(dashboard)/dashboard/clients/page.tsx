@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Users } from "lucide-react"
 import { toast } from "sonner"
 import useSWR from "swr"
+import { fetcher } from "@/lib/fetcher"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -36,8 +37,6 @@ type Client = {
   _count: { orders: number }
 }
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
-
 export default function ClientsPage() {
   const [search, setSearch] = useState("")
   const [tagFilter, setTagFilter] = useState("")
@@ -47,7 +46,7 @@ export default function ClientsPage() {
   if (search) params.set("search", search)
   if (tagFilter) params.set("tag", tagFilter)
 
-  const { data: clients = [], isLoading: loading, mutate } = useSWR<Client[]>(
+  const { data: clients = [], isLoading: loading, error: loadError, mutate } = useSWR<Client[]>(
     `/api/clients?${params}`, fetcher, { keepPreviousData: true }
   )
 
@@ -79,7 +78,9 @@ export default function ClientsPage() {
         </select>
       </div>
 
-      {loading ? (
+      {loadError ? (
+        <p className="text-sm text-destructive">Error al cargar los clientes.</p>
+      ) : loading ? (
         <div className="space-y-2">
           {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}
         </div>

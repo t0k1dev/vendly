@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useState } from "react"
 import { toast } from "sonner"
 import useSWR from "swr"
+import { fetcher } from "@/lib/fetcher"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
@@ -53,11 +54,9 @@ const STATUS_COLORS: Record<string, string> = {
 
 const CURRENCY_SYMBOL: Record<string, string> = { USD: "$", BOB: "Bs." }
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
-
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const { data: order, isLoading: loading, mutate } = useSWR<OrderDetail>(
+  const { data: order, isLoading: loading, error: loadError, mutate } = useSWR<OrderDetail>(
     `/api/orders/${id}`, fetcher
   )
 
@@ -82,6 +81,7 @@ export default function OrderDetailPage() {
     setShowCancel(false)
   }
 
+  if (loadError) return <p className="p-8 text-sm text-destructive">Error al cargar el pedido.</p>
   if (loading) return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-4">
       <Skeleton className="h-4 w-16" />

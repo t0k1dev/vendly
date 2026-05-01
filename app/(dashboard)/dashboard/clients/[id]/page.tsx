@@ -5,6 +5,7 @@ import { useParams } from "next/navigation"
 import Link from "next/link"
 import { toast } from "sonner"
 import useSWR from "swr"
+import { fetcher } from "@/lib/fetcher"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -45,11 +46,9 @@ const STATUS_LABELS: Record<string, string> = {
   ENTREGADO: "Entregado", CANCELADO: "Cancelado",
 }
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
-
 export default function ClientProfilePage() {
   const { id } = useParams<{ id: string }>()
-  const { data: client, isLoading: loading, mutate } = useSWR<ClientDetail>(
+  const { data: client, isLoading: loading, error: loadError, mutate } = useSWR<ClientDetail>(
     `/api/clients/${id}`, fetcher
   )
 
@@ -96,6 +95,7 @@ export default function ClientProfilePage() {
 
   const removeTag = (t: string) => setTags((prev) => prev.filter((x) => x !== t))
 
+  if (loadError) return <p className="p-8 text-sm text-destructive">Error al cargar el cliente.</p>
   if (loading) return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-4">
       <Skeleton className="h-4 w-16" />

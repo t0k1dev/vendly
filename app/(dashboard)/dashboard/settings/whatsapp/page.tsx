@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
 import useSWR from "swr"
+import { fetcher } from "@/lib/fetcher"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,10 +20,8 @@ const schema = z.object({
 })
 type FormData = z.infer<typeof schema>
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
-
 export default function WhatsAppSettingsPage() {
-  const { data, isLoading: loading, mutate } = useSWR<WhatsAppStatus>("/api/whatsapp/status", fetcher)
+  const { data, isLoading: loading, error: loadError, mutate } = useSWR<WhatsAppStatus>("/api/whatsapp/status", fetcher)
   const session = data?.session ?? null
 
   const [saving, setSaving] = useState(false)
@@ -54,6 +53,7 @@ export default function WhatsAppSettingsPage() {
     toast.success("WhatsApp desconectado")
   }
 
+  if (loadError) return <p className="p-8 text-sm text-destructive">Error al cargar el estado de WhatsApp.</p>
   if (loading) return <div className="p-8 text-sm text-gray-500">Cargando...</div>
 
   return (
