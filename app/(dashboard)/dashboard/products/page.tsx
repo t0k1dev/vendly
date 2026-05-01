@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import Image from "next/image"
-import { Package, Plus, Check } from "lucide-react"
+import { Package, Check, Search, X, Plus } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { ImageUpload } from "@/components/ui/image-upload"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -84,11 +85,26 @@ export default function ProductsPage() {
   const [newCategoryInput, setNewCategoryInput] = useState("")
   // local extra categories added this session (not yet in remoteCategories)
   const [localCategories, setLocalCategories] = useState<string[]>([])
+  // search + filter
+  const [search, setSearch] = useState("")
+  const [filterCategory, setFilterCategory] = useState<string | null>(null)
 
   const allCategories = [
     ...remoteCategories,
     ...localCategories.filter((c) => !remoteCategories.includes(c)),
   ]
+
+  const visibleProducts = useMemo(() => {
+    return products.filter((p) => {
+      const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase())
+      const matchesCategory = filterCategory === null
+        ? true
+        : filterCategory === "__none__"
+          ? p.category === null
+          : p.category === filterCategory
+      return matchesSearch && matchesCategory
+    })
+  }, [products, search, filterCategory])
 
   const { register, handleSubmit, reset, watch, trigger, formState: { errors } } = useForm<ProductForm>({
     resolver: zodResolver(productSchema),
@@ -200,6 +216,48 @@ export default function ProductsPage() {
         <Button onClick={openCreate}>+ Nuevo producto</Button>
       </div>
 
+      {/* Search + category filter */}
+      {products.length > 0 && (
+        <div className="flex flex-col sm:flex-row gap-2 mb-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder="Buscar producto..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 pr-8"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="size-3.5" />
+              </button>
+            )}
+          </div>
+          {remoteCategories.length > 0 && (
+            <div className="flex gap-1.5 flex-wrap">
+              <button
+                onClick={() => setFilterCategory(null)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${filterCategory === null ? "bg-foreground text-background border-foreground" : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/40"}`}
+              >
+                Todos
+              </button>
+              {remoteCategories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setFilterCategory(filterCategory === cat ? null : cat)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${filterCategory === cat ? "bg-foreground text-background border-foreground" : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/40"}`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {loadError ? (
         <p className="text-sm text-destructive">Error al cargar los productos.</p>
       ) : loading ? (
@@ -225,7 +283,9 @@ export default function ProductsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {products.map((p) => {
+          {visibleProducts.length === 0 ? (
+            <div className="col-span-2 py-12 text-center text-sm text-muted-foreground">Sin resultados</div>
+          ) : visibleProducts.map((p) => {
             const isLowStock = p.stock < p.lowStockThreshold
             const symbol = CURRENCY_SYMBOL[p.currency] ?? p.currency
             return (
@@ -256,27 +316,24 @@ export default function ProductsPage() {
                       Stock: {p.stock}
                     </p>
                   </div>
-                  <div className="flex flex-col gap-1 shrink-0">
-                    <Button size="sm" variant="outline" onClick={() => openEdit(p)}>Editar</Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={async () => {
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    <Switch
+                      checked={p.isActive}
+                      onCheckedChange={async (checked) => {
                         const res = await fetch(`/api/products/${p.id}`, {
                           method: "PATCH",
                           headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ isActive: !p.isActive }),
+                          body: JSON.stringify({ isActive: checked }),
                         })
                         if (res.ok) {
                           mutate()
-                          toast.success(p.isActive ? "Producto desactivado" : "Producto activado")
+                          toast.success(checked ? "Producto activado" : "Producto desactivado")
                         } else {
                           toast.error("Error al actualizar el producto")
                         }
                       }}
-                    >
-                      {p.isActive ? "Desactivar" : "Activar"}
-                    </Button>
+                    />
+                    <Button size="sm" variant="outline" onClick={() => openEdit(p)}>Editar</Button>
                     <Button size="sm" variant="outline" onClick={() => setShowDelete(p)}>Eliminar</Button>
                   </div>
                 </CardContent>
