@@ -256,7 +256,7 @@ export default function ProductsPage() {
           <form onSubmit={handleSubmit(onSubmit)}>
             {/* ── Step 1: Fields ── */}
             {step === 1 && (
-              <div className="space-y-3">
+              <div className="space-y-3 pb-4">
                 <div className="space-y-1">
                   <Label>Nombre *</Label>
                   <Input
