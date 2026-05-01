@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import Link from "next/link"
-import { ShoppingCart } from "lucide-react"
+import { ShoppingCart, Search, SlidersHorizontal, X, ChevronDown } from "lucide-react"
 import { toast } from "sonner"
 import useSWR from "swr"
 import { fetcher } from "@/lib/fetcher"
@@ -60,32 +60,72 @@ const STATUS_COLORS: Record<string, string> = {
 
 const CURRENCY_SYMBOL: Record<string, string> = { USD: "$", BOB: "Bs." }
 
+type FilterKey = "status" | "source" | "from" | "to"
+const FILTER_META: { key: FilterKey; label: string }[] = [
+  { key: "status", label: "Estado" },
+  { key: "source", label: "Origen" },
+  { key: "from",   label: "Desde" },
+  { key: "to",     label: "Hasta" },
+]
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function OrdersPage() {
-  const [filterStatus, setFilterStatus] = useState("")
-  const [filterSource, setFilterSource] = useState("")
-  const [filterClient, setFilterClient] = useState("")
-  const [filterFrom, setFilterFrom] = useState("")
-  const [filterTo, setFilterTo] = useState("")
+  const [search, setSearch] = useState("")
+  const [activeFilters, setActiveFilters] = useState<Partial<Record<FilterKey, string>>>({})
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [editingFilter, setEditingFilter] = useState<FilterKey | null>(null)
+  const [draftValue, setDraftValue] = useState("")
+  const pickerRef = useRef<HTMLDivElement>(null)
   const [showNewOrder, setShowNewOrder] = useState(false)
 
+  // Close picker on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setPickerOpen(false)
+        setEditingFilter(null)
+      }
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [])
+
+  const availableFilters = FILTER_META.filter((f) => !(f.key in activeFilters))
+
+  const applyFilter = (key: FilterKey, value: string) => {
+    if (!value) return
+    setActiveFilters((prev) => ({ ...prev, [key]: value }))
+    setPickerOpen(false)
+    setEditingFilter(null)
+  }
+
+  const removeFilter = (key: FilterKey) => {
+    setActiveFilters((prev) => { const n = { ...prev }; delete n[key]; return n })
+  }
+
   const params = new URLSearchParams()
-  if (filterStatus) params.set("status", filterStatus)
-  if (filterSource) params.set("source", filterSource)
-  if (filterClient) params.set("clientSearch", filterClient)
-  if (filterFrom) params.set("from", filterFrom)
-  if (filterTo) params.set("to", filterTo)
+  if (search) params.set("clientSearch", search)
+  if (activeFilters.status) params.set("status", activeFilters.status)
+  if (activeFilters.source) params.set("source", activeFilters.source)
+  if (activeFilters.from) params.set("from", activeFilters.from)
+  if (activeFilters.to) params.set("to", activeFilters.to)
 
   const { data: orders = [], isLoading: loading, error: loadError, mutate } = useSWR<Order[]>(
     `/api/orders?${params}`, fetcher, { keepPreviousData: true }
   )
 
   const handleExport = () => {
-    const exportParams = new URLSearchParams()
-    if (filterStatus) exportParams.set("status", filterStatus)
-    if (filterSource) exportParams.set("source", filterSource)
-    window.location.href = `/api/orders/export?${exportParams}`
+    const ep = new URLSearchParams()
+    if (activeFilters.status) ep.set("status", activeFilters.status)
+    if (activeFilters.source) ep.set("source", activeFilters.source)
+    window.location.href = `/api/orders/export?${ep}`
+  }
+
+  const filterChipLabel = (key: FilterKey, value: string) => {
+    if (key === "status") return STATUS_LABELS[value] ?? value
+    if (key === "source") return value === "WHATSAPP" ? "WhatsApp" : "Manual"
+    return value
   }
 
   return (
@@ -98,35 +138,132 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-6">
-        <select
-          className="rounded-lg border border-input bg-transparent px-3 py-2 text-sm"
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-        >
-          <option value="">Todos los estados</option>
-          {Object.entries(STATUS_LABELS).map(([k, v]) => (
-            <option key={k} value={k}>{v}</option>
+      {/* Search + Filters */}
+      <div className="space-y-2 mb-6">
+        {/* Search bar */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+          <Input
+            placeholder="Buscar por cliente..."
+            className="pl-9 h-10"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Active chips + add button */}
+        <div className="flex flex-wrap items-center gap-2">
+          {(Object.entries(activeFilters) as [FilterKey, string][]).map(([key, value]) => (
+            <span
+              key={key}
+              className="inline-flex items-center gap-1.5 rounded-full border bg-muted px-3 py-1 text-xs font-medium"
+            >
+              <span className="text-muted-foreground">{FILTER_META.find(f => f.key === key)?.label}:</span>
+              {filterChipLabel(key, value)}
+              <button onClick={() => removeFilter(key)} className="text-muted-foreground hover:text-foreground ml-0.5">
+                <X className="size-3" />
+              </button>
+            </span>
           ))}
-        </select>
-        <select
-          className="rounded-lg border border-input bg-transparent px-3 py-2 text-sm"
-          value={filterSource}
-          onChange={(e) => setFilterSource(e.target.value)}
-        >
-          <option value="">Todos los orígenes</option>
-          <option value="WHATSAPP">WhatsApp</option>
-          <option value="MANUAL">Manual</option>
-        </select>
-        <Input
-          placeholder="Buscar cliente..."
-          className="w-40"
-          value={filterClient}
-          onChange={(e) => setFilterClient(e.target.value)}
-        />
-        <Input type="date" className="w-36" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} />
-        <Input type="date" className="w-36" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} />
+
+          {/* Add filter button + picker */}
+          {availableFilters.length > 0 && (
+            <div className="relative" ref={pickerRef}>
+              <button
+                onClick={() => { setPickerOpen((p) => !p); setEditingFilter(null) }}
+                className="inline-flex items-center gap-1.5 rounded-full border border-dashed px-3 py-1 text-xs text-muted-foreground hover:text-foreground hover:border-foreground/50 transition-colors"
+              >
+                <SlidersHorizontal className="size-3" />
+                Añadir filtro
+                <ChevronDown className="size-3" />
+              </button>
+
+              {pickerOpen && (
+                <div className="absolute top-full left-0 mt-1 z-50 min-w-48 rounded-xl border bg-popover shadow-lg overflow-hidden">
+                  {editingFilter === null ? (
+                    // Filter list
+                    availableFilters.map((f) => (
+                      <button
+                        key={f.key}
+                        className="w-full text-left px-4 py-2.5 text-sm hover:bg-muted transition-colors"
+                        onClick={() => { setEditingFilter(f.key); setDraftValue("") }}
+                      >
+                        {f.label}
+                      </button>
+                    ))
+                  ) : (
+                    // Value picker for selected filter
+                    <div className="p-3 space-y-2 min-w-56">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        {FILTER_META.find(f => f.key === editingFilter)?.label}
+                      </p>
+                      {editingFilter === "status" && (
+                        <select
+                          autoFocus
+                          className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                          value={draftValue}
+                          onChange={(e) => setDraftValue(e.target.value)}
+                        >
+                          <option value="">Seleccionar...</option>
+                          {Object.entries(STATUS_LABELS).map(([k, v]) => (
+                            <option key={k} value={k}>{v}</option>
+                          ))}
+                        </select>
+                      )}
+                      {editingFilter === "source" && (
+                        <select
+                          autoFocus
+                          className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                          value={draftValue}
+                          onChange={(e) => setDraftValue(e.target.value)}
+                        >
+                          <option value="">Seleccionar...</option>
+                          <option value="WHATSAPP">WhatsApp</option>
+                          <option value="MANUAL">Manual</option>
+                        </select>
+                      )}
+                      {(editingFilter === "from" || editingFilter === "to") && (
+                        <input
+                          autoFocus
+                          type="date"
+                          className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                          value={draftValue}
+                          onChange={(e) => setDraftValue(e.target.value)}
+                        />
+                      )}
+                      <div className="flex gap-2 pt-1">
+                        <Button size="sm" variant="outline" className="flex-1" onClick={() => setEditingFilter(null)}>
+                          Atrás
+                        </Button>
+                        <Button size="sm" className="flex-1" disabled={!draftValue} onClick={() => applyFilter(editingFilter, draftValue)}>
+                          Aplicar
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Clear all */}
+          {Object.keys(activeFilters).length > 0 && (
+            <button
+              onClick={() => setActiveFilters({})}
+              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+            >
+              Limpiar todo
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Orders table */}
