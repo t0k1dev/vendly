@@ -342,13 +342,6 @@ export default function OrdersPage() {
                       >
                         <Pencil className="size-4" />
                       </button>
-                      <button
-                        onClick={() => setDeleteOrder(o)}
-                        className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                        title="Eliminar pedido"
-                      >
-                        <Trash2 className="size-4" />
-                      </button>
                     </div>
                   </TableCell>
                 </TableRow>
