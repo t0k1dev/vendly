@@ -172,6 +172,10 @@
   .t-progress { width: 0 !important; }
 }
 
+@layer base {
+  a, button { cursor: pointer; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .t-digit-group .t-digit { animation: none !important; }
   .t-progress { transition: none !important; }
