@@ -63,6 +63,7 @@ export default function ProductsPage() {
   )
 
   const [showForm, setShowForm] = useState(false)
+  const [step, setStep] = useState<1 | 2>(1)
   const [editing, setEditing] = useState<Product | null>(null)
   const [showDelete, setShowDelete] = useState<Product | null>(null)
   const [saving, setSaving] = useState(false)
@@ -70,7 +71,7 @@ export default function ProductsPage() {
   const [imageUrls, setImageUrls] = useState<string[]>([])
   const [categoryMode, setCategoryMode] = useState<"select" | "custom">("select")
 
-  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<ProductForm>({
+  const { register, handleSubmit, reset, setValue, watch, trigger, formState: { errors } } = useForm<ProductForm>({
     resolver: zodResolver(productSchema),
     mode: "onTouched",
     defaultValues: { currency: "BOB", lowStockThreshold: "5", name: "", price: "", stock: "", category: "" },
@@ -80,6 +81,7 @@ export default function ProductsPage() {
 
   const openCreate = () => {
     setEditing(null)
+    setStep(1)
     setCategoryMode("select")
     reset({ currency: "BOB", lowStockThreshold: "5", name: "", price: "", stock: "", category: "" })
     setImageUrls([])
@@ -89,6 +91,7 @@ export default function ProductsPage() {
 
   const openEdit = (p: Product) => {
     setEditing(p)
+    setStep(1)
     const isCustom = !!p.category && !CATEGORIES.includes(p.category)
     setCategoryMode(isCustom ? "custom" : "select")
     reset({
@@ -225,12 +228,35 @@ export default function ProductsPage() {
           <DialogHeader>
             <DialogTitle>{editing ? "Editar producto" : "Nuevo producto"}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)} className="py-2">
-            <div className="flex flex-col gap-5">
 
-              {/* ── Fields ── */}
+          {/* Step indicator */}
+          <div className="flex items-center gap-2 px-1 pb-2">
+            <button
+              type="button"
+              onClick={() => setStep(1)}
+              className={`flex items-center gap-2 text-sm font-medium transition-colors ${step === 1 ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold transition-colors ${step === 1 ? "bg-foreground text-background" : "bg-muted text-muted-foreground"}`}>1</span>
+              Información
+            </button>
+            <div className="h-px flex-1 bg-border" />
+            <button
+              type="button"
+              onClick={async () => {
+                const valid = await trigger(["name", "price", "stock", "lowStockThreshold"])
+                if (valid) setStep(2)
+              }}
+              className={`flex items-center gap-2 text-sm font-medium transition-colors ${step === 2 ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold transition-colors ${step === 2 ? "bg-foreground text-background" : "bg-muted text-muted-foreground"}`}>2</span>
+              Imágenes
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit(onSubmit)}>
+            {/* ── Step 1: Fields ── */}
+            {step === 1 && (
               <div className="space-y-4">
-
                 <div className="space-y-1.5">
                   <Label>Nombre *</Label>
                   <Input
@@ -316,26 +342,43 @@ export default function ProductsPage() {
                     {errors.lowStockThreshold && <p className="text-xs text-destructive">{errors.lowStockThreshold.message}</p>}
                   </div>
                 </div>
-
-                {apiError && <p className="text-sm text-destructive">{apiError}</p>}
               </div>
+            )}
 
-              {/* ── Images ── */}
+            {/* ── Step 2: Images ── */}
+            {step === 2 && (
               <div className="space-y-1.5">
-                <Label>Imágenes</Label>
+                <Label>Imágenes <span className="text-muted-foreground font-normal">(opcional)</span></Label>
                 <ImageUpload
                   urls={imageUrls}
                   onChange={setImageUrls}
                   uploadUrl="/api/products/upload-image"
                   max={5}
                 />
+                {apiError && <p className="text-sm text-destructive pt-1">{apiError}</p>}
               </div>
-
-            </div>
+            )}
 
             <DialogFooter className="pt-4 pb-4 sticky bottom-0 bg-popover">
-              <Button type="button" variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button>
-              <Button type="submit" disabled={saving}>{saving ? "Guardando..." : editing ? "Guardar" : "Crear"}</Button>
+              {step === 1 ? (
+                <>
+                  <Button type="button" variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button>
+                  <Button
+                    type="button"
+                    onClick={async () => {
+                      const valid = await trigger(["name", "price", "stock", "lowStockThreshold"])
+                      if (valid) setStep(2)
+                    }}
+                  >
+                    Siguiente
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button type="button" variant="outline" onClick={() => setStep(1)}>Atrás</Button>
+                  <Button type="submit" disabled={saving}>{saving ? "Guardando..." : editing ? "Guardar" : "Crear"}</Button>
+                </>
+              )}
             </DialogFooter>
           </form>
         </DialogContent>
