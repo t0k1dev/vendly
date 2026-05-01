@@ -578,12 +578,12 @@ function NewOrderModal({ onClose, onCreated }: { onClose: () => void; onCreated:
   const total = cart.reduce((sum, i) => sum + Number(i.product.price) * i.quantity, 0)
 
   const handleCreateClient = async () => {
-    if (!newClientPhone) return
+    if (!newClientPhone || !newClientName) return
     setCreatingClient(true)
     const res = await fetch("/api/clients", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone: newClientPhone, name: newClientName || null }),
+      body: JSON.stringify({ phone: newClientPhone, name: newClientName }),
     })
     setCreatingClient(false)
     if (!res.ok) { setError("Error al crear cliente"); return }
@@ -698,12 +698,12 @@ function NewOrderModal({ onClose, onCreated }: { onClose: () => void; onCreated:
                     <Label>O crear nuevo cliente</Label>
                     <div className="flex gap-2">
                       <Input
-                        placeholder="Teléfono *"
+                        placeholder="Teléfono"
                         value={newClientPhone}
                         onChange={(e) => setNewClientPhone(e.target.value)}
                       />
                       <Input
-                        placeholder="Nombre (opcional)"
+                        placeholder="Nombre *"
                         value={newClientName}
                         onChange={(e) => setNewClientName(e.target.value)}
                       />
@@ -713,7 +713,7 @@ function NewOrderModal({ onClose, onCreated }: { onClose: () => void; onCreated:
                       variant="outline"
                       className="w-full"
                       onClick={handleCreateClient}
-                      disabled={creatingClient || !newClientPhone}
+                      disabled={creatingClient || !newClientPhone || !newClientName}
                     >
                       {creatingClient ? "Creando..." : "+ Crear cliente"}
                     </Button>
