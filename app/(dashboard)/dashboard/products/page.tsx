@@ -94,14 +94,17 @@ export default function ProductsPage() {
     ...localCategories.filter((c) => !remoteCategories.includes(c)),
   ]
 
+  const productCategories = useMemo(() => {
+    const cats = new Set(products.map((p) => p.category).filter(Boolean) as string[])
+    return [...cats].sort()
+  }, [products])
+
   const visibleProducts = useMemo(() => {
     return products.filter((p) => {
       const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase())
       const matchesCategory = filterCategory === null
         ? true
-        : filterCategory === "__none__"
-          ? p.category === null
-          : p.category === filterCategory
+        : p.category === filterCategory
       return matchesSearch && matchesCategory
     })
   }, [products, search, filterCategory])
@@ -218,8 +221,8 @@ export default function ProductsPage() {
 
       {/* Search + category filter */}
       {products.length > 0 && (
-        <div className="flex flex-col sm:flex-row gap-2 mb-4">
-          <div className="relative flex-1">
+        <div className="flex flex-col gap-2 mb-4">
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
             <Input
               placeholder="Buscar producto..."
@@ -236,7 +239,7 @@ export default function ProductsPage() {
               </button>
             )}
           </div>
-          {remoteCategories.length > 0 && (
+          {productCategories.length > 0 && (
             <div className="flex gap-1.5 flex-wrap">
               <button
                 onClick={() => setFilterCategory(null)}
@@ -244,7 +247,7 @@ export default function ProductsPage() {
               >
                 Todos
               </button>
-              {remoteCategories.map((cat) => (
+              {productCategories.map((cat) => (
                 <button
                   key={cat}
                   onClick={() => setFilterCategory(filterCategory === cat ? null : cat)}
@@ -284,7 +287,25 @@ export default function ProductsPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {visibleProducts.length === 0 ? (
-            <div className="col-span-2 py-12 text-center text-sm text-muted-foreground">Sin resultados</div>
+            <div className="col-span-2 flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
+              <Search className="size-8 opacity-30" />
+              <p className="font-medium text-sm">Sin resultados</p>
+              <p className="text-xs">
+                {search && filterCategory
+                  ? `No hay productos con "${search}" en esta categoría`
+                  : search
+                    ? `No se encontraron productos para "${search}"`
+                    : "No hay productos en esta categoría"}
+              </p>
+              {(search || filterCategory) && (
+                <button
+                  onClick={() => { setSearch(""); setFilterCategory(null) }}
+                  className="mt-1 text-xs text-primary underline underline-offset-2"
+                >
+                  Limpiar filtros
+                </button>
+              )}
+            </div>
           ) : visibleProducts.map((p) => {
             const isLowStock = p.stock < p.lowStockThreshold
             const symbol = CURRENCY_SYMBOL[p.currency] ?? p.currency
