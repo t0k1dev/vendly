@@ -243,6 +243,7 @@ function NewClientModal({ onClose, onCreated }: { onClose: () => void; onCreated
               <Input
                 placeholder="María"
                 value={firstName}
+                maxLength={60}
                 onChange={(e) => { setFirstName(e.target.value); setNameError(null) }}
                 className={nameError ? "border-destructive focus-visible:ring-destructive" : ""}
               />
@@ -250,7 +251,7 @@ function NewClientModal({ onClose, onCreated }: { onClose: () => void; onCreated
             </div>
             <div className="space-y-1">
               <Label>Apellido <span className="text-muted-foreground text-xs">(opcional)</span></Label>
-              <Input placeholder="García" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+              <Input placeholder="García" maxLength={60} value={lastName} onChange={(e) => setLastName(e.target.value)} />
             </div>
           </div>
 
