@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Image from "next/image"
-import { Package } from "lucide-react"
+import { Package, Plus, Check } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -57,32 +57,50 @@ type ProductForm = z.infer<typeof productSchema>
 
 const CURRENCY_SYMBOL: Record<string, string> = { USD: "$", BOB: "Bs." }
 
+const STEPS = [
+  { n: 1, label: "Información" },
+  { n: 2, label: "Categoría" },
+  { n: 3, label: "Imágenes" },
+] as const
+
 export default function ProductsPage() {
   const { data: products = [], isLoading: loading, error: loadError, mutate } = useSWR<Product[]>(
     "/api/products", fetcher, { keepPreviousData: true }
   )
+  const { data: remoteCategories = [], mutate: mutateCategories } = useSWR<string[]>(
+    "/api/categories", fetcher
+  )
 
   const [showForm, setShowForm] = useState(false)
-  const [step, setStep] = useState<1 | 2>(1)
+  const [step, setStep] = useState<1 | 2 | 3>(1)
   const [editing, setEditing] = useState<Product | null>(null)
   const [showDelete, setShowDelete] = useState<Product | null>(null)
   const [saving, setSaving] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
   const [imageUrls, setImageUrls] = useState<string[]>([])
-  const [categoryMode, setCategoryMode] = useState<"select" | "custom">("select")
+  // category state managed outside react-hook-form for step 2
+  const [selectedCategory, setSelectedCategory] = useState<string>("")
+  const [newCategoryInput, setNewCategoryInput] = useState("")
+  // local extra categories added this session (not yet in remoteCategories)
+  const [localCategories, setLocalCategories] = useState<string[]>([])
 
-  const { register, handleSubmit, reset, setValue, watch, trigger, formState: { errors } } = useForm<ProductForm>({
+  const allCategories = [
+    ...remoteCategories,
+    ...localCategories.filter((c) => !remoteCategories.includes(c)),
+  ]
+
+  const { register, handleSubmit, reset, watch, trigger, formState: { errors } } = useForm<ProductForm>({
     resolver: zodResolver(productSchema),
     mode: "onTouched",
     defaultValues: { currency: "BOB", lowStockThreshold: "5", name: "", price: "", stock: "", category: "" },
   })
 
-  const CATEGORIES = ["Ropa", "Electrónica", "Alimentos", "Bebidas", "Salud", "Hogar", "Deportes", "Juguetes", "Belleza", "Mascotas"]
-
   const openCreate = () => {
     setEditing(null)
     setStep(1)
-    setCategoryMode("select")
+    setSelectedCategory("")
+    setNewCategoryInput("")
+    setLocalCategories([])
     reset({ currency: "BOB", lowStockThreshold: "5", name: "", price: "", stock: "", category: "" })
     setImageUrls([])
     setApiError(null)
@@ -92,8 +110,9 @@ export default function ProductsPage() {
   const openEdit = (p: Product) => {
     setEditing(p)
     setStep(1)
-    const isCustom = !!p.category && !CATEGORIES.includes(p.category)
-    setCategoryMode(isCustom ? "custom" : "select")
+    setSelectedCategory(p.category ?? "")
+    setNewCategoryInput("")
+    setLocalCategories(p.category && !remoteCategories.includes(p.category) ? [p.category] : [])
     reset({
       name: p.name,
       price: String(p.price),
@@ -107,6 +126,21 @@ export default function ProductsPage() {
     setShowForm(true)
   }
 
+  const addNewCategory = () => {
+    const trimmed = newCategoryInput.trim()
+    if (!trimmed) return
+    if (!allCategories.includes(trimmed)) {
+      setLocalCategories((prev) => [...prev, trimmed])
+    }
+    setSelectedCategory(trimmed)
+    setNewCategoryInput("")
+  }
+
+  const goToStep2 = async () => {
+    const valid = await trigger(["name", "price", "stock", "lowStockThreshold"])
+    if (valid) setStep(2)
+  }
+
   const onSubmit = async (data: ProductForm) => {
     setSaving(true); setApiError(null)
 
@@ -115,7 +149,7 @@ export default function ProductsPage() {
       price: Number(data.price),
       currency: data.currency,
       stock: Number(data.stock),
-      category: data.category || null,
+      category: selectedCategory || null,
       lowStockThreshold: Number(data.lowStockThreshold),
       imageUrls,
     }
@@ -139,6 +173,7 @@ export default function ProductsPage() {
     if (!res.ok) { setApiError("Error al guardar el producto"); return }
     setShowForm(false)
     mutate()
+    mutateCategories()
     toast.success(editing ? "Producto actualizado" : "Producto creado")
   }
 
@@ -230,155 +265,170 @@ export default function ProductsPage() {
           </DialogHeader>
 
           {/* Step indicator */}
-          <div className="flex items-center gap-2 px-1 pb-2">
-            <button
-              type="button"
-              onClick={() => setStep(1)}
-              className={`flex items-center gap-2 text-sm font-medium transition-colors ${step === 1 ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold transition-colors ${step === 1 ? "bg-foreground text-background" : "bg-muted text-muted-foreground"}`}>1</span>
-              Información
-            </button>
-            <div className="h-px flex-1 bg-border" />
-            <button
-              type="button"
-              onClick={async () => {
-                const valid = await trigger(["name", "price", "stock", "lowStockThreshold"])
-                if (valid) setStep(2)
-              }}
-              className={`flex items-center gap-2 text-sm font-medium transition-colors ${step === 2 ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold transition-colors ${step === 2 ? "bg-foreground text-background" : "bg-muted text-muted-foreground"}`}>2</span>
-              Imágenes
-            </button>
+          <div className="flex items-center gap-1 px-1 pb-2">
+            {STEPS.map((s, i) => (
+              <div key={s.n} className="flex items-center gap-1 flex-1">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (s.n > step) {
+                      if (s.n >= 2) {
+                        const valid = await trigger(["name", "price", "stock", "lowStockThreshold"])
+                        if (!valid) return
+                      }
+                    }
+                    setStep(s.n as 1 | 2 | 3)
+                  }}
+                  className={`flex items-center gap-1.5 text-xs font-medium transition-colors whitespace-nowrap ${step === s.n ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold transition-colors shrink-0 ${step === s.n ? "bg-foreground text-background" : step > s.n ? "bg-foreground/20 text-foreground" : "bg-muted text-muted-foreground"}`}>
+                    {step > s.n ? <Check className="size-2.5" /> : s.n}
+                  </span>
+                  {s.label}
+                </button>
+                {i < STEPS.length - 1 && <div className="h-px flex-1 bg-border mx-1" />}
+              </div>
+            ))}
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 min-h-0">
             <div className="flex-1 overflow-y-auto px-1">
-            {/* ── Step 1: Fields ── */}
-            {step === 1 && (
-              <div className="space-y-3 pb-2">
-                <div className="space-y-1">
-                  <Label>Nombre *</Label>
-                  <Input
-                    placeholder="Ej: Camiseta azul M"
-                    maxLength={300}
-                    {...register("name")}
-                    className={errors.name ? "border-destructive focus-visible:ring-destructive" : ""}
-                  />
-                  <div className="flex justify-between items-center min-h-[16px]">
-                    {errors.name
-                      ? <p className="text-xs text-destructive">{errors.name.message}</p>
-                      : <span />
-                    }
-                    <p className={`text-xs ml-auto ${(watch("name")?.length ?? 0) >= 280 ? "text-destructive" : "text-muted-foreground"}`}>
-                      {watch("name")?.length ?? 0}/300
-                    </p>
+
+              {/* ── Step 1: Info ── */}
+              {step === 1 && (
+                <div className="space-y-3 pb-2">
+                  <div className="space-y-1">
+                    <Label>Nombre *</Label>
+                    <Input
+                      placeholder="Ej: Camiseta azul M"
+                      maxLength={300}
+                      {...register("name")}
+                      className={errors.name ? "border-destructive focus-visible:ring-destructive" : ""}
+                    />
+                    <div className="flex justify-between items-center min-h-[16px]">
+                      {errors.name
+                        ? <p className="text-xs text-destructive">{errors.name.message}</p>
+                        : <span />
+                      }
+                      <p className={`text-xs ml-auto ${(watch("name")?.length ?? 0) >= 280 ? "text-destructive" : "text-muted-foreground"}`}>
+                        {watch("name")?.length ?? 0}/300
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <Label>Precio *</Label>
+                      <Input type="number" step="0.01" placeholder="0.00" {...register("price")} className={errors.price ? "border-destructive focus-visible:ring-destructive" : ""} />
+                      {errors.price && <p className="text-xs text-destructive">{errors.price.message}</p>}
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Moneda</Label>
+                      <select
+                        className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                        {...register("currency")}
+                      >
+                        <option value="USD">USD</option>
+                        <option value="BOB">BOB</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Stock *</Label>
+                      <Input type="number" placeholder="0" {...register("stock")} className={errors.stock ? "border-destructive focus-visible:ring-destructive" : ""} />
+                      {errors.stock && <p className="text-xs text-destructive">{errors.stock.message}</p>}
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Umbral de stock bajo</Label>
+                      <Input type="number" placeholder="5" {...register("lowStockThreshold")} />
+                      {errors.lowStockThreshold && <p className="text-xs text-destructive">{errors.lowStockThreshold.message}</p>}
+                    </div>
                   </div>
                 </div>
+              )}
 
-                <div className="space-y-1">
-                  <Label>Categoría</Label>
-                  {categoryMode === "select" ? (
-                    <select
-                      className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                      {...register("category")}
-                      onChange={(e) => {
-                        if (e.target.value === "__other__") {
-                          setCategoryMode("custom")
-                          setValue("category", "")
-                        } else {
-                          setValue("category", e.target.value)
-                        }
-                      }}
+              {/* ── Step 2: Category ── */}
+              {step === 2 && (
+                <div className="space-y-3 pb-2">
+                  <p className="text-sm text-muted-foreground">Selecciona una categoría o crea una nueva.</p>
+
+                  {/* Chip list */}
+                  <div className="flex flex-wrap gap-2">
+                    {/* No category option */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCategory("")}
+                      className={`rounded-full border px-3 py-1 text-sm transition-colors ${selectedCategory === "" ? "border-foreground bg-foreground text-background" : "border-input hover:border-foreground/50"}`}
                     >
-                      <option value="">Sin categoría</option>
-                      {CATEGORIES.map((c) => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                      <option value="__other__">Otra...</option>
-                    </select>
-                  ) : (
+                      Sin categoría
+                    </button>
+                    {allCategories.map((cat) => (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setSelectedCategory(cat)}
+                        className={`rounded-full border px-3 py-1 text-sm transition-colors ${selectedCategory === cat ? "border-foreground bg-foreground text-background" : "border-input hover:border-foreground/50"}`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* New category input */}
+                  <div className="space-y-1">
+                    <Label>Nueva categoría</Label>
                     <div className="flex gap-2">
                       <Input
-                        placeholder="Escribe la categoría"
-                        {...register("category")}
-                        autoFocus
+                        placeholder="Ej: Electrónica"
+                        value={newCategoryInput}
+                        onChange={(e) => setNewCategoryInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addNewCategory() } }}
                       />
-                      <button
-                        type="button"
-                        onClick={() => { setCategoryMode("select"); setValue("category", "") }}
-                        className="shrink-0 text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
-                      >
-                        Cancelar
-                      </button>
+                      <Button type="button" variant="outline" size="icon" onClick={addNewCategory} disabled={!newCategoryInput.trim()}>
+                        <Plus className="size-4" />
+                      </Button>
                     </div>
+                  </div>
+
+                  {selectedCategory && (
+                    <p className="text-xs text-muted-foreground">
+                      Seleccionada: <span className="font-medium text-foreground">{selectedCategory}</span>
+                    </p>
                   )}
                 </div>
+              )}
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <Label>Precio *</Label>
-                    <Input type="number" step="0.01" placeholder="0.00" {...register("price")} className={errors.price ? "border-destructive focus-visible:ring-destructive" : ""} />
-                    {errors.price && <p className="text-xs text-destructive">{errors.price.message}</p>}
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Moneda</Label>
-                    <select
-                      className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                      {...register("currency")}
-                    >
-                      <option value="USD">USD</option>
-                      <option value="BOB">BOB</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Stock *</Label>
-                    <Input type="number" placeholder="0" {...register("stock")} className={errors.stock ? "border-destructive focus-visible:ring-destructive" : ""} />
-                    {errors.stock && <p className="text-xs text-destructive">{errors.stock.message}</p>}
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Umbral de stock bajo</Label>
-                    <Input type="number" placeholder="5" {...register("lowStockThreshold")} />
-                    {errors.lowStockThreshold && <p className="text-xs text-destructive">{errors.lowStockThreshold.message}</p>}
-                  </div>
+              {/* ── Step 3: Images ── */}
+              {step === 3 && (
+                <div className="space-y-1 pb-2">
+                  <Label>Imágenes <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+                  <ImageUpload
+                    urls={imageUrls}
+                    onChange={setImageUrls}
+                    uploadUrl="/api/products/upload-image"
+                    max={5}
+                  />
+                  {apiError && <p className="text-sm text-destructive pt-1">{apiError}</p>}
                 </div>
-              </div>
-            )}
-
-            {/* ── Step 2: Images ── */}
-            {step === 2 && (
-              <div className="space-y-1">
-                <Label>Imágenes <span className="text-muted-foreground font-normal">(opcional)</span></Label>
-                <ImageUpload
-                  urls={imageUrls}
-                  onChange={setImageUrls}
-                  uploadUrl="/api/products/upload-image"
-                  max={5}
-                />
-                {apiError && <p className="text-sm text-destructive pt-1">{apiError}</p>}
-              </div>
-            )}
+              )}
 
             </div>{/* end scrollable */}
 
             <DialogFooter className="pt-4 pb-6 border-t">
-              {step === 1 ? (
+              {step === 1 && (
                 <>
                   <Button type="button" variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button>
-                  <Button
-                    type="button"
-                    onClick={async () => {
-                      const valid = await trigger(["name", "price", "stock", "lowStockThreshold"])
-                      if (valid) setStep(2)
-                    }}
-                  >
-                    Siguiente
-                  </Button>
+                  <Button type="button" onClick={goToStep2}>Siguiente</Button>
                 </>
-              ) : (
+              )}
+              {step === 2 && (
                 <>
                   <Button type="button" variant="outline" onClick={() => setStep(1)}>Atrás</Button>
+                  <Button type="button" onClick={() => setStep(3)}>Siguiente</Button>
+                </>
+              )}
+              {step === 3 && (
+                <>
+                  <Button type="button" variant="outline" onClick={() => setStep(2)}>Atrás</Button>
                   <Button type="submit" disabled={saving}>{saving ? "Guardando..." : editing ? "Guardar" : "Crear"}</Button>
                 </>
               )}
