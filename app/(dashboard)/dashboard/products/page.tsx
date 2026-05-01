@@ -221,7 +221,7 @@ export default function ProductsPage() {
 
       {/* Create / Edit modal */}
       <Dialog open={showForm} onOpenChange={(o) => { if (!o) setShowForm(false) }}>
-        <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto pb-0">
           <DialogHeader>
             <DialogTitle>{editing ? "Editar producto" : "Nuevo producto"}</DialogTitle>
           </DialogHeader>
@@ -333,7 +333,7 @@ export default function ProductsPage() {
 
             </div>
 
-            <DialogFooter className="pt-5">
+            <DialogFooter className="pt-4 pb-4 sticky bottom-0 bg-popover">
               <Button type="button" variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button>
               <Button type="submit" disabled={saving}>{saving ? "Guardando..." : editing ? "Guardar" : "Crear"}</Button>
             </DialogFooter>
