@@ -34,6 +34,7 @@ type Product = {
   imageUrl: string | null
   imageUrls: string[]
   lowStockThreshold: number
+  isActive: boolean
 }
 
 const productSchema = z.object({
@@ -228,7 +229,7 @@ export default function ProductsPage() {
             const isLowStock = p.stock < p.lowStockThreshold
             const symbol = CURRENCY_SYMBOL[p.currency] ?? p.currency
             return (
-              <Card key={p.id}>
+              <Card key={p.id} className={!p.isActive ? "opacity-50" : undefined}>
                 <CardContent className="p-4 flex gap-3">
                   {p.imageUrl ? (
                     <div className="relative h-16 w-16 shrink-0 rounded-md overflow-hidden bg-gray-100">
@@ -242,9 +243,12 @@ export default function ProductsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <p className="font-semibold text-sm truncate">{p.name}</p>
-                      {isLowStock && (
-                        <Badge variant="destructive" className="shrink-0 text-xs">Stock bajo</Badge>
-                      )}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {!p.isActive && <Badge variant="outline" className="text-xs text-muted-foreground">Inactivo</Badge>}
+                        {isLowStock && p.isActive && (
+                          <Badge variant="destructive" className="text-xs">Stock bajo</Badge>
+                        )}
+                      </div>
                     </div>
                     {p.category && <p className="text-xs text-gray-400">{p.category}</p>}
                     <p className="text-sm font-medium mt-1">{symbol}{Number(p.price).toFixed(2)}</p>
@@ -254,6 +258,25 @@ export default function ProductsPage() {
                   </div>
                   <div className="flex flex-col gap-1 shrink-0">
                     <Button size="sm" variant="outline" onClick={() => openEdit(p)}>Editar</Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => {
+                        const res = await fetch(`/api/products/${p.id}`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ isActive: !p.isActive }),
+                        })
+                        if (res.ok) {
+                          mutate()
+                          toast.success(p.isActive ? "Producto desactivado" : "Producto activado")
+                        } else {
+                          toast.error("Error al actualizar el producto")
+                        }
+                      }}
+                    >
+                      {p.isActive ? "Desactivar" : "Activar"}
+                    </Button>
                     <Button size="sm" variant="outline" onClick={() => setShowDelete(p)}>Eliminar</Button>
                   </div>
                 </CardContent>

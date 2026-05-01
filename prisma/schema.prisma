@@ -99,6 +99,7 @@ model Product {
   imageUrl          String?
   imageUrls         String[]
   lowStockThreshold Int      @default(5)
+  isActive          Boolean  @default(true)
   createdAt         DateTime @default(now())
 
   inventory  Inventory   @relation(fields: [inventoryId], references: [id], onDelete: Cascade)

@@ -24,6 +24,7 @@ const updateSchema = z.object({
   imageUrl: z.string().url().optional().nullable(),
   imageUrls: z.array(z.string().url()).optional(),
   lowStockThreshold: z.number().int().min(0).optional(),
+  isActive: z.boolean().optional(),
 })
 
 export async function PATCH(
