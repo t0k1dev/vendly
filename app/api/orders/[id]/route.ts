@@ -61,3 +61,24 @@ export async function PATCH(
   const updated = await prisma.order.update({ where: { id }, data: parsed.data })
   return NextResponse.json(updated)
 }
+
+// DELETE /api/orders/[id]
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params
+  const supabase = await createSupabaseServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+
+  const member = await prisma.storeMember.findFirst({ where: { userId: user.id } })
+  if (!member) return NextResponse.json({ error: "No autorizado" }, { status: 403 })
+
+  const existing = await getOrder(id, member.storeId)
+  if (!existing) return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 })
+
+  await prisma.orderItem.deleteMany({ where: { orderId: id } })
+  await prisma.order.delete({ where: { id } })
+  return NextResponse.json({ ok: true })
+}

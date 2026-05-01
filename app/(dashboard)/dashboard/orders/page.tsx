@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { ShoppingCart, Search, SlidersHorizontal, X, ChevronDown, Check } from "lucide-react"
+import { ShoppingCart, Search, SlidersHorizontal, X, ChevronDown, Check, Eye, Pencil, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import useSWR from "swr"
 import { fetcher } from "@/lib/fetcher"
@@ -78,6 +78,9 @@ export default function OrdersPage() {
   const pickerRef = useRef<HTMLDivElement>(null)
   const [showNewOrder, setShowNewOrder] = useState(false)
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
+  const [editOrderId, setEditOrderId] = useState<string | null>(null)
+  const [deleteOrder, setDeleteOrder] = useState<Order | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   // Close picker on outside click
   useEffect(() => {
@@ -324,12 +327,29 @@ export default function OrdersPage() {
                     {new Date(o.createdAt).toLocaleDateString("es-BO")}
                   </TableCell>
                   <TableCell>
-                    <button
-                      onClick={() => setSelectedOrderId(o.id)}
-                      className="text-xs text-blue-600 hover:underline"
-                    >
-                      Ver
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setSelectedOrderId(o.id)}
+                        className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        title="Ver pedido"
+                      >
+                        <Eye className="size-4" />
+                      </button>
+                      <button
+                        onClick={() => setEditOrderId(o.id)}
+                        className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        title="Editar pedido"
+                      >
+                        <Pencil className="size-4" />
+                      </button>
+                      <button
+                        onClick={() => setDeleteOrder(o)}
+                        className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                        title="Eliminar pedido"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -353,6 +373,52 @@ export default function OrdersPage() {
           onClose={() => setSelectedOrderId(null)}
           onUpdated={mutate}
         />
+      )}
+
+      {/* Edit Order Modal */}
+      {editOrderId && (
+        <EditOrderModal
+          id={editOrderId}
+          onClose={() => setEditOrderId(null)}
+          onUpdated={() => { setEditOrderId(null); mutate() }}
+        />
+      )}
+
+      {/* Delete Order Confirm */}
+      {deleteOrder && (
+        <Dialog open onOpenChange={(o) => { if (!o) setDeleteOrder(null) }}>
+          <DialogContent className="w-[95vw] sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Eliminar pedido</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground py-2">
+              ¿Estás seguro de que deseas eliminar el pedido de{" "}
+              <span className="font-medium text-foreground">{deleteOrder.client.name ?? deleteOrder.client.phone}</span>?
+              Esta acción no se puede deshacer.
+            </p>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setDeleteOrder(null)}>Cancelar</Button>
+              <Button
+                variant="destructive"
+                disabled={deleting}
+                onClick={async () => {
+                  setDeleting(true)
+                  const res = await fetch(`/api/orders/${deleteOrder.id}`, { method: "DELETE" })
+                  setDeleting(false)
+                  if (res.ok) {
+                    setDeleteOrder(null)
+                    mutate()
+                    toast.success("Pedido eliminado")
+                  } else {
+                    toast.error("Error al eliminar el pedido")
+                  }
+                }}
+              >
+                {deleting ? "Eliminando..." : "Eliminar"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   )
@@ -845,6 +911,95 @@ function NewOrderModal({ onClose, onCreated }: { onClose: () => void; onCreated:
               </Button>
             </>
           )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ─── Edit Order Modal ─────────────────────────────────────────────────────────
+
+function EditOrderModal({ id, onClose, onUpdated }: { id: string; onClose: () => void; onUpdated: () => void }) {
+  const { data: order, isLoading } = useSWR<OrderDetail>(`/api/orders/${id}`, fetcher)
+  const [status, setStatus] = useState("")
+  const [notes, setNotes] = useState("")
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (order) {
+      setStatus(order.status)
+      setNotes(order.notes ?? "")
+    }
+  }, [order])
+
+  const handleSave = async () => {
+    setSaving(true); setError(null)
+    const res = await fetch(`/api/orders/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status, notes: notes || null }),
+    })
+    setSaving(false)
+    if (res.ok) {
+      toast.success("Pedido actualizado")
+      onUpdated()
+    } else {
+      setError("Error al guardar los cambios")
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose() }}>
+      <DialogContent className="w-[95vw] sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Editar pedido</DialogTitle>
+        </DialogHeader>
+
+        {isLoading ? (
+          <div className="space-y-3 py-2">
+            <div className="h-9 bg-muted rounded animate-pulse" />
+            <div className="h-20 bg-muted rounded animate-pulse" />
+          </div>
+        ) : (
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>Estado</Label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                {["PENDIENTE", "CONFIRMADO", "ENVIADO", "ENTREGADO", "CANCELADO"].map((s) => (
+                  <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Notas (opcional)</Label>
+              <textarea
+                className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                rows={3}
+                maxLength={500}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Ej: Entregar por la tarde"
+              />
+              <p className={`text-xs text-right ${notes.length >= 480 ? "text-destructive" : "text-muted-foreground"}`}>
+                {notes.length}/500
+              </p>
+            </div>
+
+            {error && <p className="text-sm text-destructive">{error}</p>}
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2 border-t pt-4">
+          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button onClick={handleSave} disabled={saving || isLoading}>
+            {saving ? "Guardando..." : "Guardar cambios"}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
