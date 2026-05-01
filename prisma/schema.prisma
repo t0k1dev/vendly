@@ -113,6 +113,7 @@ model Client {
   storeId   String
   name      String?
   phone     String
+  email     String?
   location  String?
   notes     String?
   tags      String[]

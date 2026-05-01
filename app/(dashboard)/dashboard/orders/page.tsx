@@ -612,6 +612,7 @@ function NewOrderModal({ onClose, onCreated }: { onClose: () => void; onCreated:
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // Inline client creation
+  const [newClientPrefix, setNewClientPrefix] = useState("+591")
   const [newClientPhone, setNewClientPhone] = useState("")
   const [newClientName, setNewClientName] = useState("")
   const [creatingClient, setCreatingClient] = useState(false)
@@ -646,10 +647,11 @@ function NewOrderModal({ onClose, onCreated }: { onClose: () => void; onCreated:
   const handleCreateClient = async () => {
     if (!newClientPhone || !newClientName) return
     setCreatingClient(true)
+    const phone = `${newClientPrefix}${newClientPhone.replace(/\s/g, "")}`
     const res = await fetch("/api/clients", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone: newClientPhone, name: newClientName }),
+      body: JSON.stringify({ phone, name: newClientName }),
     })
     setCreatingClient(false)
     if (!res.ok) { setError("Error al crear cliente"); return }
@@ -762,18 +764,34 @@ function NewOrderModal({ onClose, onCreated }: { onClose: () => void; onCreated:
 
                   <div className="space-y-1.5 pt-1">
                     <Label>O crear nuevo cliente</Label>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1.5">
+                      <select
+                        value={newClientPrefix}
+                        onChange={(e) => setNewClientPrefix(e.target.value)}
+                        className="rounded-lg border border-input bg-transparent px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring shrink-0"
+                      >
+                        <option value="+591">🇧🇴 +591</option>
+                        <option value="+54">🇦🇷 +54</option>
+                        <option value="+55">🇧🇷 +55</option>
+                        <option value="+56">🇨🇱 +56</option>
+                        <option value="+57">🇨🇴 +57</option>
+                        <option value="+51">🇵🇪 +51</option>
+                        <option value="+52">🇲🇽 +52</option>
+                        <option value="+1">🇺🇸 +1</option>
+                      </select>
                       <Input
-                        placeholder="Teléfono"
+                        placeholder="71234567"
+                        type="tel"
                         value={newClientPhone}
                         onChange={(e) => setNewClientPhone(e.target.value)}
-                      />
-                      <Input
-                        placeholder="Nombre *"
-                        value={newClientName}
-                        onChange={(e) => setNewClientName(e.target.value)}
+                        className="flex-1"
                       />
                     </div>
+                    <Input
+                      placeholder="Nombre *"
+                      value={newClientName}
+                      onChange={(e) => setNewClientName(e.target.value)}
+                    />
                     <Button
                       size="sm"
                       variant="outline"

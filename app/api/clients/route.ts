@@ -42,8 +42,9 @@ export async function GET(request: Request) {
 const createSchema = z.object({
   phone: z.string().min(1, "Teléfono requerido"),
   name: z.string().optional().nullable(),
+  email: z.string().email("Email inválido").optional().nullable().or(z.literal("")),
   location: z.string().optional().nullable(),
-  notes: z.string().optional().nullable(),
+  notes: z.string().max(500).optional().nullable(),
   tags: z.array(z.string()).optional(),
 })
 
@@ -61,8 +62,8 @@ export async function POST(request: Request) {
 
   const client = await prisma.client.upsert({
     where: { storeId_phone: { storeId, phone: parsed.data.phone } },
-    create: { storeId, ...parsed.data, tags: parsed.data.tags ?? [] },
-    update: { name: parsed.data.name, location: parsed.data.location, notes: parsed.data.notes },
+    create: { storeId, ...parsed.data, email: parsed.data.email || null, tags: parsed.data.tags ?? [] },
+    update: { name: parsed.data.name, email: parsed.data.email || null, location: parsed.data.location, notes: parsed.data.notes },
   })
 
   return NextResponse.json(client, { status: 201 })

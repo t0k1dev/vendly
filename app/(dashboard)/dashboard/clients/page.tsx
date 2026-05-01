@@ -151,19 +151,47 @@ export default function ClientsPage() {
 
 // ─── New client modal ─────────────────────────────────────────────────────────
 
+const PHONE_PREFIXES = [
+  { code: "+591", label: "🇧🇴 +591" },
+  { code: "+54",  label: "🇦🇷 +54" },
+  { code: "+55",  label: "🇧🇷 +55" },
+  { code: "+56",  label: "🇨🇱 +56" },
+  { code: "+57",  label: "🇨🇴 +57" },
+  { code: "+51",  label: "🇵🇪 +51" },
+  { code: "+52",  label: "🇲🇽 +52" },
+  { code: "+1",   label: "🇺🇸 +1" },
+]
+
 function NewClientModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
-  const [phone, setPhone] = useState("")
+  const [prefix, setPrefix] = useState("+591")
+  const [phoneNumber, setPhoneNumber] = useState("")
   const [name, setName] = useState("")
+  const [email, setEmail] = useState("")
+  const [notes, setNotes] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [emailError, setEmailError] = useState<string | null>(null)
+
+  const validateEmail = (val: string) => {
+    if (!val) return null
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val) ? null : "Email inválido"
+  }
 
   const handleSubmit = async () => {
-    if (!phone) { setError("Teléfono requerido"); return }
+    if (!phoneNumber) { setError("Teléfono requerido"); return }
+    const emailErr = validateEmail(email)
+    if (emailErr) { setEmailError(emailErr); return }
     setSaving(true); setError(null)
+    const phone = `${prefix}${phoneNumber.replace(/\s/g, "")}`
     const res = await fetch("/api/clients", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone, name: name || null }),
+      body: JSON.stringify({
+        phone,
+        name: name || null,
+        email: email || null,
+        notes: notes || null,
+      }),
     })
     setSaving(false)
     if (!res.ok) { const j = await res.json(); setError(j.error ?? "Error al crear cliente"); return }
@@ -172,18 +200,66 @@ function NewClientModal({ onClose, onCreated }: { onClose: () => void; onCreated
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose() }}>
-      <DialogContent>
+      <DialogContent className="w-[95vw] sm:max-w-sm">
         <DialogHeader><DialogTitle>Nuevo cliente</DialogTitle></DialogHeader>
         <div className="space-y-3 py-2">
+
+          {/* Phone */}
           <div className="space-y-1">
             <Label>Teléfono *</Label>
-            <Input placeholder="Ej: 59171234567" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <div className="flex gap-1.5">
+              <select
+                value={prefix}
+                onChange={(e) => setPrefix(e.target.value)}
+                className="rounded-lg border border-input bg-transparent px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring shrink-0"
+              >
+                {PHONE_PREFIXES.map((p) => (
+                  <option key={p.code} value={p.code}>{p.label}</option>
+                ))}
+              </select>
+              <Input
+                placeholder="71234567"
+                value={phoneNumber}
+                onChange={(e) => { setPhoneNumber(e.target.value); setError(null) }}
+                type="tel"
+                className="flex-1"
+              />
+            </div>
           </div>
+
+          {/* Name */}
           <div className="space-y-1">
-            <Label>Nombre</Label>
+            <Label>Nombre <span className="text-muted-foreground text-xs">(opcional)</span></Label>
             <Input placeholder="Ej: María García" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
-          {error && <p className="text-sm text-red-500">{error}</p>}
+
+          {/* Email */}
+          <div className="space-y-1">
+            <Label>Email <span className="text-muted-foreground text-xs">(opcional)</span></Label>
+            <Input
+              placeholder="Ej: maria@email.com"
+              type="email"
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); setEmailError(validateEmail(e.target.value)) }}
+              className={emailError ? "border-destructive focus-visible:ring-destructive" : ""}
+            />
+            {emailError && <p className="text-xs text-destructive">{emailError}</p>}
+          </div>
+
+          {/* Notes */}
+          <div className="space-y-1">
+            <Label>Notas <span className="text-muted-foreground text-xs">(opcional)</span></Label>
+            <textarea
+              className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+              rows={2}
+              maxLength={500}
+              placeholder="Ej: Prefiere entregas por la tarde"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
+
+          {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
