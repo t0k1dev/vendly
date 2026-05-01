@@ -165,12 +165,15 @@ const PHONE_PREFIXES = [
 function NewClientModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [prefix, setPrefix] = useState("+591")
   const [phoneNumber, setPhoneNumber] = useState("")
-  const [name, setName] = useState("")
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
   const [email, setEmail] = useState("")
   const [notes, setNotes] = useState("")
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [phoneError, setPhoneError] = useState<string | null>(null)
+  const [nameError, setNameError] = useState<string | null>(null)
   const [emailError, setEmailError] = useState<string | null>(null)
+  const [apiError, setApiError] = useState<string | null>(null)
 
   const validateEmail = (val: string) => {
     if (!val) return null
@@ -178,23 +181,28 @@ function NewClientModal({ onClose, onCreated }: { onClose: () => void; onCreated
   }
 
   const handleSubmit = async () => {
-    if (!phoneNumber) { setError("Teléfono requerido"); return }
+    let valid = true
+    if (!phoneNumber) { setPhoneError("Teléfono requerido"); valid = false }
+    if (!firstName) { setNameError("Nombre requerido"); valid = false }
     const emailErr = validateEmail(email)
-    if (emailErr) { setEmailError(emailErr); return }
-    setSaving(true); setError(null)
+    if (emailErr) { setEmailError(emailErr); valid = false }
+    if (!valid) return
+
+    setSaving(true); setApiError(null)
     const phone = `${prefix}${phoneNumber.replace(/\s/g, "")}`
+    const fullName = [firstName.trim(), lastName.trim()].filter(Boolean).join(" ")
     const res = await fetch("/api/clients", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         phone,
-        name: name || null,
+        name: fullName,
         email: email || null,
         notes: notes || null,
       }),
     })
     setSaving(false)
-    if (!res.ok) { const j = await res.json(); setError(j.error ?? "Error al crear cliente"); return }
+    if (!res.ok) { const j = await res.json(); setApiError(j.error ?? "Error al crear cliente"); return }
     onCreated()
   }
 
@@ -220,24 +228,37 @@ function NewClientModal({ onClose, onCreated }: { onClose: () => void; onCreated
               <Input
                 placeholder="71234567"
                 value={phoneNumber}
-                onChange={(e) => { setPhoneNumber(e.target.value); setError(null) }}
+                onChange={(e) => { setPhoneNumber(e.target.value); setPhoneError(null) }}
                 type="tel"
-                className="flex-1"
+                className={`flex-1 ${phoneError ? "border-destructive focus-visible:ring-destructive" : ""}`}
               />
             </div>
+            {phoneError && <p className="text-xs text-destructive">{phoneError}</p>}
           </div>
 
-          {/* Name */}
-          <div className="space-y-1">
-            <Label>Nombre <span className="text-muted-foreground text-xs">(opcional)</span></Label>
-            <Input placeholder="Ej: María García" value={name} onChange={(e) => setName(e.target.value)} />
+          {/* Name + Lastname */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label>Nombre *</Label>
+              <Input
+                placeholder="María"
+                value={firstName}
+                onChange={(e) => { setFirstName(e.target.value); setNameError(null) }}
+                className={nameError ? "border-destructive focus-visible:ring-destructive" : ""}
+              />
+              {nameError && <p className="text-xs text-destructive">{nameError}</p>}
+            </div>
+            <div className="space-y-1">
+              <Label>Apellido <span className="text-muted-foreground text-xs">(opcional)</span></Label>
+              <Input placeholder="García" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+            </div>
           </div>
 
           {/* Email */}
           <div className="space-y-1">
             <Label>Email <span className="text-muted-foreground text-xs">(opcional)</span></Label>
             <Input
-              placeholder="Ej: maria@email.com"
+              placeholder="maria@email.com"
               type="email"
               value={email}
               onChange={(e) => { setEmail(e.target.value); setEmailError(validateEmail(e.target.value)) }}
@@ -257,9 +278,12 @@ function NewClientModal({ onClose, onCreated }: { onClose: () => void; onCreated
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
             />
+            <p className={`text-xs text-right ${notes.length >= 480 ? "text-destructive" : "text-muted-foreground"}`}>
+              {notes.length}/500
+            </p>
           </div>
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {apiError && <p className="text-sm text-destructive">{apiError}</p>}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
