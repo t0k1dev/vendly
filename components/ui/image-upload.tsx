@@ -25,6 +25,8 @@ interface ImageUploadProps {
   max?: number
   /** Max size per file in MB (default 2) */
   maxSizeMB?: number
+  /** Called when uploading state changes */
+  onUploadingChange?: (uploading: boolean) => void
 }
 
 export function ImageUpload({
@@ -33,6 +35,7 @@ export function ImageUpload({
   uploadUrl,
   max = 5,
   maxSizeMB = 2,
+  onUploadingChange,
 }: ImageUploadProps) {
   // Items being shown in the UI (uploading + done from external urls)
   const [items, setItems] = useState<ImageItem[]>(() =>
@@ -78,7 +81,11 @@ export function ImageUpload({
         const preview = URL.createObjectURL(file)
         const id = `uploading-${Date.now()}-${file.name}`
         const loadingItem: ImageItem = { id, preview, status: "uploading" }
-        setItems((prev) => [...prev, loadingItem])
+        setItems((prev) => {
+          const next = [...prev, loadingItem]
+          onUploadingChange?.(next.some((i) => i.status === "uploading"))
+          return next
+        })
 
         try {
           const fd = new FormData()
@@ -87,23 +94,27 @@ export function ImageUpload({
           if (!res.ok) throw new Error("Error al subir")
           const { url } = await res.json()
 
-          setItems((prev) =>
-            prev.map((item) =>
-              item.id === id ? { id: url, preview: url, status: "done" } : item
+          setItems((prev) => {
+            const next = prev.map((item) =>
+              item.id === id ? { id: url, preview: url, status: "done" as const } : item
             )
-          )
+            onUploadingChange?.(next.some((i) => i.status === "uploading"))
+            return next
+          })
           onChange([
             ...urls,
             url,
           ])
         } catch {
-          setItems((prev) =>
-            prev.map((item) =>
+          setItems((prev) => {
+            const next = prev.map((item) =>
               item.id === id
-                ? { ...item, status: "error", error: `No se pudo subir "${file.name}".` }
+                ? { ...item, status: "error" as const, error: `No se pudo subir "${file.name}".` }
                 : item
             )
-          )
+            onUploadingChange?.(next.some((i) => i.status === "uploading"))
+            return next
+          })
         }
       }
     },

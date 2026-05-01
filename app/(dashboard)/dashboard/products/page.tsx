@@ -78,7 +78,7 @@ export default function ProductsPage() {
   const [saving, setSaving] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
   const [imageUrls, setImageUrls] = useState<string[]>([])
-  // category state managed outside react-hook-form for step 2
+  const [imageUploading, setImageUploading] = useState(false)  // category state managed outside react-hook-form for step 2
   const [selectedCategory, setSelectedCategory] = useState<string>("")
   const [newCategoryInput, setNewCategoryInput] = useState("")
   // local extra categories added this session (not yet in remoteCategories)
@@ -406,6 +406,7 @@ export default function ProductsPage() {
                     onChange={setImageUrls}
                     uploadUrl="/api/products/upload-image"
                     max={5}
+                    onUploadingChange={setImageUploading}
                   />
                   {apiError && <p className="text-sm text-destructive pt-1">{apiError}</p>}
                 </div>
@@ -429,7 +430,9 @@ export default function ProductsPage() {
               {step === 3 && (
                 <>
                   <Button type="button" variant="outline" onClick={() => setStep(2)}>Atrás</Button>
-                  <Button type="submit" disabled={saving}>{saving ? "Guardando..." : editing ? "Guardar" : "Crear"}</Button>
+                  <Button type="submit" disabled={saving || imageUploading}>
+                    {imageUploading ? "Subiendo imágenes..." : saving ? "Guardando..." : editing ? "Guardar" : "Crear"}
+                  </Button>
                 </>
               )}
             </DialogFooter>
