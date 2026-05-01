@@ -224,7 +224,7 @@ export default function ProductsPage() {
 
       {/* Create / Edit modal */}
       <Dialog open={showForm} onOpenChange={(o) => { if (!o) setShowForm(false) }}>
-        <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto pb-0">
+        <DialogContent className="w-[95vw] sm:max-w-md pb-0">
           <DialogHeader>
             <DialogTitle>{editing ? "Editar producto" : "Nuevo producto"}</DialogTitle>
           </DialogHeader>
@@ -256,8 +256,8 @@ export default function ProductsPage() {
           <form onSubmit={handleSubmit(onSubmit)}>
             {/* ── Step 1: Fields ── */}
             {step === 1 && (
-              <div className="space-y-4">
-                <div className="space-y-1.5">
+              <div className="space-y-3">
+                <div className="space-y-1">
                   <Label>Nombre *</Label>
                   <Input
                     placeholder="Ej: Camiseta azul M"
@@ -276,7 +276,7 @@ export default function ProductsPage() {
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   <Label>Categoría</Label>
                   {categoryMode === "select" ? (
                     <select
@@ -316,12 +316,12 @@ export default function ProductsPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     <Label>Precio *</Label>
                     <Input type="number" step="0.01" placeholder="0.00" {...register("price")} className={errors.price ? "border-destructive focus-visible:ring-destructive" : ""} />
                     {errors.price && <p className="text-xs text-destructive">{errors.price.message}</p>}
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     <Label>Moneda</Label>
                     <select
                       className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
@@ -331,12 +331,12 @@ export default function ProductsPage() {
                       <option value="BOB">BOB</option>
                     </select>
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     <Label>Stock *</Label>
                     <Input type="number" placeholder="0" {...register("stock")} className={errors.stock ? "border-destructive focus-visible:ring-destructive" : ""} />
                     {errors.stock && <p className="text-xs text-destructive">{errors.stock.message}</p>}
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     <Label>Umbral de stock bajo</Label>
                     <Input type="number" placeholder="5" {...register("lowStockThreshold")} />
                     {errors.lowStockThreshold && <p className="text-xs text-destructive">{errors.lowStockThreshold.message}</p>}
@@ -347,7 +347,7 @@ export default function ProductsPage() {
 
             {/* ── Step 2: Images ── */}
             {step === 2 && (
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <Label>Imágenes <span className="text-muted-foreground font-normal">(opcional)</span></Label>
                 <ImageUpload
                   urls={imageUrls}
