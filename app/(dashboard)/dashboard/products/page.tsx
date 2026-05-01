@@ -221,15 +221,15 @@ export default function ProductsPage() {
 
       {/* Create / Edit modal */}
       <Dialog open={showForm} onOpenChange={(o) => { if (!o) setShowForm(false) }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? "Editar producto" : "Nuevo producto"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="py-2">
-            <div className="flex flex-col md:flex-row gap-6">
+            <div className="flex flex-col gap-5">
 
-              {/* ── Left column: fields ── */}
-              <div className="flex-1 space-y-4 min-w-0">
+              {/* ── Fields ── */}
+              <div className="space-y-4">
 
                 <div className="space-y-1.5">
                   <Label>Nombre *</Label>
@@ -289,7 +289,7 @@ export default function ProductsPage() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label>Precio *</Label>
                     <Input type="number" step="0.01" placeholder="0.00" {...register("price")} className={errors.price ? "border-destructive focus-visible:ring-destructive" : ""} />
@@ -310,19 +310,18 @@ export default function ProductsPage() {
                     <Input type="number" placeholder="0" {...register("stock")} className={errors.stock ? "border-destructive focus-visible:ring-destructive" : ""} />
                     {errors.stock && <p className="text-xs text-destructive">{errors.stock.message}</p>}
                   </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label>Umbral de stock bajo</Label>
-                  <Input type="number" placeholder="5" {...register("lowStockThreshold")} />
-                  {errors.lowStockThreshold && <p className="text-xs text-destructive">{errors.lowStockThreshold.message}</p>}
+                  <div className="space-y-1.5">
+                    <Label>Umbral de stock bajo</Label>
+                    <Input type="number" placeholder="5" {...register("lowStockThreshold")} />
+                    {errors.lowStockThreshold && <p className="text-xs text-destructive">{errors.lowStockThreshold.message}</p>}
+                  </div>
                 </div>
 
                 {apiError && <p className="text-sm text-destructive">{apiError}</p>}
               </div>
 
-              {/* ── Right column: images ── */}
-              <div className="md:w-72 shrink-0 space-y-1.5">
+              {/* ── Images ── */}
+              <div className="space-y-1.5">
                 <Label>Imágenes</Label>
                 <ImageUpload
                   urls={imageUrls}
