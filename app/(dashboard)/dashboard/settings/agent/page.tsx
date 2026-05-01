@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import useSWR from "swr"
+import { fetcher } from "@/lib/fetcher"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -50,8 +51,6 @@ const DEFAULT_CONFIG: AgentConfig = {
   outOfHoursMsg: "Gracias por escribirnos. En este momento estamos fuera de horario, te atenderemos pronto.",
   businessHours: DEFAULT_HOURS,
 }
-
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
 // ─── Live Preview ─────────────────────────────────────────────────────────────
 
@@ -103,7 +102,7 @@ function LivePreview({ config }: { config: AgentConfig }) {
 
 export default function AgentSettingsPage() {
   const router = useRouter()
-  const { data: serverConfig, isLoading: loading } = useSWR<AgentConfig>("/api/agent-config", fetcher)
+  const { data: serverConfig, isLoading: loading, error: loadError } = useSWR<AgentConfig>("/api/agent-config", fetcher)
   const [config, setConfig] = useState<AgentConfig>(DEFAULT_CONFIG)
   const [saving, setSaving] = useState(false)
 
@@ -150,6 +149,7 @@ export default function AgentSettingsPage() {
     }
   }
 
+  if (loadError) return <p className="p-8 text-sm text-destructive">Error al cargar la configuración.</p>
   if (loading) return (
     <div className="p-8 max-w-6xl mx-auto space-y-4">
       <Skeleton className="h-8 w-64" />

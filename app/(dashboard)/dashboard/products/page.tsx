@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
 import useSWR from "swr"
+import { fetcher } from "@/lib/fetcher"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -54,10 +55,8 @@ type ProductForm = z.infer<typeof productSchema>
 
 const CURRENCY_SYMBOL: Record<string, string> = { USD: "$", BOB: "Bs." }
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
-
 export default function ProductsPage() {
-  const { data: products = [], isLoading: loading, mutate } = useSWR<Product[]>(
+  const { data: products = [], isLoading: loading, error: loadError, mutate } = useSWR<Product[]>(
     "/api/products", fetcher, { keepPreviousData: true }
   )
 
@@ -175,7 +174,9 @@ export default function ProductsPage() {
         <Button onClick={openCreate}>+ Nuevo producto</Button>
       </div>
 
-      {loading ? (
+      {loadError ? (
+        <p className="text-sm text-destructive">Error al cargar los productos.</p>
+      ) : loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {[...Array(4)].map((_, i) => (
             <Card key={i}><CardContent className="p-4 flex gap-3">

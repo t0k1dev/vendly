@@ -5,6 +5,7 @@ import Link from "next/link"
 import { ShoppingCart } from "lucide-react"
 import { toast } from "sonner"
 import useSWR from "swr"
+import { fetcher } from "@/lib/fetcher"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -59,8 +60,6 @@ const STATUS_COLORS: Record<string, string> = {
 
 const CURRENCY_SYMBOL: Record<string, string> = { USD: "$", BOB: "Bs." }
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
-
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function OrdersPage() {
@@ -78,7 +77,7 @@ export default function OrdersPage() {
   if (filterFrom) params.set("from", filterFrom)
   if (filterTo) params.set("to", filterTo)
 
-  const { data: orders = [], isLoading: loading, mutate } = useSWR<Order[]>(
+  const { data: orders = [], isLoading: loading, error: loadError, mutate } = useSWR<Order[]>(
     `/api/orders?${params}`, fetcher, { keepPreviousData: true }
   )
 
@@ -131,7 +130,9 @@ export default function OrdersPage() {
       </div>
 
       {/* Orders table */}
-      {loading ? (
+      {loadError ? (
+        <p className="text-sm text-destructive">Error al cargar los pedidos.</p>
+      ) : loading ? (
         <div className="space-y-2">
           {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}
         </div>
