@@ -224,7 +224,7 @@ export default function ProductsPage() {
 
       {/* Create / Edit modal */}
       <Dialog open={showForm} onOpenChange={(o) => { if (!o) setShowForm(false) }}>
-        <DialogContent className="w-[95vw] sm:max-w-md pb-0">
+        <DialogContent className="w-[95vw] sm:max-w-md flex flex-col max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>{editing ? "Editar producto" : "Nuevo producto"}</DialogTitle>
           </DialogHeader>
@@ -253,10 +253,11 @@ export default function ProductsPage() {
             </button>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)}>
+          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 min-h-0">
+            <div className="flex-1 overflow-y-auto">
             {/* ── Step 1: Fields ── */}
             {step === 1 && (
-              <div className="space-y-3 pb-4">
+              <div className="space-y-3 pb-2">
                 <div className="space-y-1">
                   <Label>Nombre *</Label>
                   <Input
@@ -359,7 +360,9 @@ export default function ProductsPage() {
               </div>
             )}
 
-            <DialogFooter className="pt-4 pb-6 sticky bottom-0 bg-popover">
+            </div>{/* end scrollable */}
+
+            <DialogFooter className="pt-4 pb-6 border-t">
               {step === 1 ? (
                 <>
                   <Button type="button" variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button>
