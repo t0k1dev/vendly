@@ -3,6 +3,7 @@
 import { useState } from "react"
 import useSWR from "swr"
 import { fetcher } from "@/lib/fetcher"
+import { BarChart2, PackageSearch, Zap } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 
@@ -141,6 +142,14 @@ export default function DashboardPage() {
             <Card>
               <CardContent className="p-5">
                 <p className="text-sm font-semibold mb-4">Pedidos por estado</p>
+                {Object.values(summary.ordersByStatus).every((v) => v === 0) ||
+                Object.keys(summary.ordersByStatus).length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-6 gap-2 text-muted-foreground">
+                    <BarChart2 className="size-8 opacity-30" />
+                    <p className="text-sm font-medium">Sin pedidos {PERIOD_LABELS[period].toLowerCase()}</p>
+                    <p className="text-xs">Los pedidos aparecerán aquí cuando lleguen</p>
+                  </div>
+                ) : (
                 <div className="space-y-2">
                   {Object.entries(STATUS_LABELS).map(([key, label]) => {
                     const count = summary.ordersByStatus[key] ?? 0
@@ -159,13 +168,18 @@ export default function DashboardPage() {
                     )
                   })}
                 </div>
+                )}
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-5">
                 <p className="text-sm font-semibold mb-4">Top 5 productos ({PERIOD_LABELS[period].toLowerCase()})</p>
                 {summary.topProducts.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Sin ventas {PERIOD_LABELS[period].toLowerCase()}</p>
+                  <div className="flex flex-col items-center justify-center py-6 gap-2 text-muted-foreground">
+                    <PackageSearch className="size-8 opacity-30" />
+                    <p className="text-sm font-medium">Sin ventas {PERIOD_LABELS[period].toLowerCase()}</p>
+                    <p className="text-xs">Los productos más vendidos aparecerán aquí</p>
+                  </div>
                 ) : (
                   <div className="space-y-3">
                     {summary.topProducts.map((p, idx) => (
@@ -186,7 +200,11 @@ export default function DashboardPage() {
             <CardContent className="p-5">
               <p className="text-sm font-semibold mb-4">Actividad reciente</p>
               {summary.activity.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Sin actividad reciente</p>
+                <div className="flex flex-col items-center justify-center py-8 gap-2 text-muted-foreground">
+                  <Zap className="size-8 opacity-30" />
+                  <p className="text-sm font-medium">Sin actividad {PERIOD_LABELS[period].toLowerCase()}</p>
+                  <p className="text-xs">Los pedidos y clientes nuevos aparecerán aquí</p>
+                </div>
               ) : (
                 <div className="space-y-3">
                   {summary.activity.map((event, idx) => (
