@@ -221,12 +221,12 @@ export default function ProductsPage() {
 
       {/* Create / Edit modal */}
       <Dialog open={showForm} onOpenChange={(o) => { if (!o) setShowForm(false) }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? "Editar producto" : "Nuevo producto"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="py-2">
-            <div className="flex gap-6">
+            <div className="flex flex-col md:flex-row gap-6">
 
               {/* ── Left column: fields ── */}
               <div className="flex-1 space-y-4 min-w-0">
@@ -322,7 +322,7 @@ export default function ProductsPage() {
               </div>
 
               {/* ── Right column: images ── */}
-              <div className="w-52 shrink-0 space-y-1.5">
+              <div className="md:w-72 shrink-0 space-y-1.5">
                 <Label>Imágenes</Label>
                 <ImageUpload
                   urls={imageUrls}
