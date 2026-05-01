@@ -34,7 +34,7 @@ type Product = {
 }
 
 const productSchema = z.object({
-  name: z.string().min(1, "El nombre es requerido"),
+  name: z.string().min(1, "El nombre es requerido").max(300, "Máximo 300 caracteres"),
   price: z.string()
     .min(1, "El precio es requerido")
     .refine((v) => !isNaN(Number(v)) && Number(v) > 0, "El precio debe ser mayor a 0"),
@@ -69,21 +69,28 @@ export default function ProductsPage() {
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [imageError, setImageError] = useState<string | null>(null)
+  const [categoryMode, setCategoryMode] = useState<"select" | "custom">("select")
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<ProductForm>({
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<ProductForm>({
     resolver: zodResolver(productSchema),
-    defaultValues: { currency: "USD", lowStockThreshold: "5" },
+    mode: "onTouched",
+    defaultValues: { currency: "USD", lowStockThreshold: "5", name: "", price: "", stock: "", category: "" },
   })
+
+  const CATEGORIES = ["Ropa", "Electrónica", "Alimentos", "Bebidas", "Salud", "Hogar", "Deportes", "Juguetes", "Belleza", "Mascotas"]
 
   const openCreate = () => {
     setEditing(null)
-    reset({ currency: "USD", lowStockThreshold: "5" })
+    setCategoryMode("select")
+    reset({ currency: "USD", lowStockThreshold: "5", name: "", price: "", stock: "", category: "" })
     setImageFile(null); setImagePreview(null); setApiError(null); setImageError(null)
     setShowForm(true)
   }
 
   const openEdit = (p: Product) => {
     setEditing(p)
+    const isCustom = !!p.category && !CATEGORIES.includes(p.category)
+    setCategoryMode(isCustom ? "custom" : "select")
     reset({
       name: p.name,
       price: String(p.price),
@@ -239,18 +246,65 @@ export default function ProductsPage() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 py-2">
             <div className="space-y-1">
               <Label>Nombre *</Label>
-              <Input placeholder="Ej: Camiseta azul M" {...register("name")} />
-              {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
+              <Input
+                placeholder="Ej: Camiseta azul M"
+                maxLength={300}
+                {...register("name")}
+                className={errors.name ? "border-destructive focus-visible:ring-destructive" : ""}
+              />
+              <div className="flex justify-between items-center min-h-[16px]">
+                {errors.name
+                  ? <p className="text-xs text-destructive">{errors.name.message}</p>
+                  : <span />
+                }
+                <p className={`text-xs ml-auto ${(watch("name")?.length ?? 0) >= 280 ? "text-destructive" : "text-muted-foreground"}`}>
+                  {watch("name")?.length ?? 0}/300
+                </p>
+              </div>
             </div>
             <div className="space-y-1">
               <Label>Categoría</Label>
-              <Input placeholder="Ej: Ropa" {...register("category")} />
+              {categoryMode === "select" ? (
+                <select
+                  className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  {...register("category")}
+                  onChange={(e) => {
+                    if (e.target.value === "__other__") {
+                      setCategoryMode("custom")
+                      setValue("category", "")
+                    } else {
+                      setValue("category", e.target.value)
+                    }
+                  }}
+                >
+                  <option value="">Sin categoría</option>
+                  {CATEGORIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                  <option value="__other__">Otra...</option>
+                </select>
+              ) : (
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Escribe la categoría"
+                    {...register("category")}
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => { setCategoryMode("select"); setValue("category", "") }}
+                    className="shrink-0 text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1">
                 <Label>Precio *</Label>
-                <Input type="number" step="0.01" placeholder="0.00" {...register("price")} />
-                {errors.price && <p className="text-xs text-red-500">{errors.price.message}</p>}
+                <Input type="number" step="0.01" placeholder="0.00" {...register("price")} className={errors.price ? "border-destructive focus-visible:ring-destructive" : ""} />
+                {errors.price && <p className="text-xs text-destructive">{errors.price.message}</p>}
               </div>
               <div className="space-y-1">
                 <Label>Moneda</Label>
@@ -264,8 +318,8 @@ export default function ProductsPage() {
               </div>
               <div className="space-y-1">
                 <Label>Stock *</Label>
-                <Input type="number" placeholder="0" {...register("stock")} />
-                {errors.stock && <p className="text-xs text-red-500">{errors.stock.message}</p>}
+                <Input type="number" placeholder="0" {...register("stock")} className={errors.stock ? "border-destructive focus-visible:ring-destructive" : ""} />
+                {errors.stock && <p className="text-xs text-destructive">{errors.stock.message}</p>}
               </div>
             </div>
             <div className="space-y-1">

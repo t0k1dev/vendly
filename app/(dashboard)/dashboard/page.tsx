@@ -74,7 +74,7 @@ export default function DashboardPage() {
             key={p}
             onClick={() => setPeriod(p)}
             className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-              period === p ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"
+              period === p ? "bg-background shadow text-foreground" : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
             }`}
           >
             {PERIOD_LABELS[p]}
